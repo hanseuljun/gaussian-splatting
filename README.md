@@ -1,1 +1,1 @@
-# gaussian-spalt
+# gaussian-splat
