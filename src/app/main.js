@@ -1,5 +1,4 @@
 // see https://webgpufundamentals.org/webgpu/lessons/webgpu-utils.html#wgpu-matrix
-import {vec3, mat4} from './wgpu-matrix.module.js';
 import * as THREE from 'three';
 
 async function main(canvas) {
@@ -272,18 +271,20 @@ async function main(canvas) {
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
-    const projection = mat4.perspective(30 * Math.PI / 180, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
-    const eye = [1, 4, -6];
-    const target = [0, 0, 0];
-    const up = [0, 1, 0];
+    const projection = new THREE.PerspectiveCamera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10).projectionMatrix;
+    // const eye = new THREE.Vector3(1, 4, -6);
+    // const target = new THREE.Vector3(0, 0, 0);
+    // const up = new THREE.Vector3(0, 1, 0);
+    const eye = new THREE.Vector3(0, 0, -6);
 
-    const view = mat4.lookAt(eye, target, up);
-    const viewProjection = mat4.multiply(projection, view);
-    const world = mat4.rotationY(time);
-    mat4.transpose(mat4.inverse(world), worldInverseTranspose);
-    mat4.multiply(viewProjection, world, worldViewProjection);
+    // const view = new THREE.Matrix4().lookAt(eye, target, up);
+    const view = new THREE.Matrix4().makeTranslation(eye);
+    const viewProjection = projection.multiply(view);
+    const world = new THREE.Matrix4().makeRotationY(time);
+    world.invert().transpose().toArray(worldInverseTranspose);
+    viewProjection.multiply(world).toArray(worldViewProjection);
 
-    vec3.normalize([1, 8, -10], lightDirection);
+    new THREE.Vector3(1, 8, -10).normalize().toArray(lightDirection);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
     device.queue.writeBuffer(fsUniformBuffer, 0, fsUniformValues);
