@@ -1,7 +1,7 @@
 // see https://webgpufundamentals.org/webgpu/lessons/webgpu-utils.html#wgpu-matrix
 import * as THREE from 'three';
 
-async function main(canvas) {
+async function main(canvas: HTMLCanvasElement) {
   const adapter = await navigator.gpu?.requestAdapter();
   const device = await adapter?.requestDevice();
   if (!device) {
@@ -10,6 +10,10 @@ async function main(canvas) {
   }
 
   const context = canvas.getContext('webgpu');
+  if (!context) {
+    fail('need a browser that supports WebGPU');
+    return
+  }
 
   const presentationFormat = navigator.gpu.getPreferredCanvasFormat(adapter);
   context.configure({
