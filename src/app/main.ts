@@ -78,13 +78,25 @@ async function main(canvas: HTMLCanvasElement) {
   }
   `;
 
-  function createBuffer(device: GPUDevice, data: Float32Array<ArrayBuffer> | Uint16Array<ArrayBuffer>, usage: GPUFlagsConstant) {
+  function createFloat32Buffer(device: GPUDevice, data: Float32Array, usage: GPUFlagsConstant) {
     const buffer = device.createBuffer({
       size: data.byteLength,
       usage,
       mappedAtCreation: true,
     });
-    const dst = new data.constructor(buffer.getMappedRange());
+    const dst = new Float32Array(buffer.getMappedRange());
+    dst.set(data);
+    buffer.unmap();
+    return buffer;
+  }
+
+  function createUint16Buffer(device: GPUDevice, data: Uint16Array, usage: GPUFlagsConstant) {
+    const buffer = device.createBuffer({
+      size: data.byteLength,
+      usage,
+      mappedAtCreation: true,
+    });
+    const dst = new Uint16Array(buffer.getMappedRange());
     dst.set(data);
     buffer.unmap();
     return buffer;
@@ -95,10 +107,10 @@ async function main(canvas: HTMLCanvasElement) {
   const texcoords = new Float32Array([1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1]);
   const indices   = new Uint16Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
 
-  const positionBuffer = createBuffer(device, positions, GPUBufferUsage.VERTEX);
-  const normalBuffer = createBuffer(device, normals, GPUBufferUsage.VERTEX);
-  const texcoordBuffer = createBuffer(device, texcoords, GPUBufferUsage.VERTEX);
-  const indicesBuffer = createBuffer(device, indices, GPUBufferUsage.INDEX);
+  const positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
+  const normalBuffer = createFloat32Buffer(device, normals, GPUBufferUsage.VERTEX);
+  const texcoordBuffer = createFloat32Buffer(device, texcoords, GPUBufferUsage.VERTEX);
+  const indicesBuffer = createUint16Buffer(device, indices, GPUBufferUsage.INDEX);
 
   const tex = device.createTexture({
     size: [2, 2],
@@ -272,6 +284,10 @@ async function main(canvas: HTMLCanvasElement) {
   }
 
   function render(time: number) {
+    if (!context) {
+      fail('need a browser that supports WebGPU');
+      return;
+    }
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
