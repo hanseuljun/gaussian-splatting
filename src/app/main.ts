@@ -2,20 +2,20 @@
 import * as THREE from 'three';
 
 async function main(canvas: HTMLCanvasElement) {
-  const adapter = await navigator.gpu?.requestAdapter();
-  const device = await adapter?.requestDevice();
-  if (!device) {
+  const adapter = await navigator.gpu.requestAdapter();
+  if (!adapter) {
     fail('need a browser that supports WebGPU');
     return;
   }
 
+  const device = await adapter.requestDevice();
   const context = canvas.getContext('webgpu');
   if (!context) {
     fail('need a browser that supports WebGPU');
-    return
+    return;
   }
 
-  const presentationFormat = navigator.gpu.getPreferredCanvasFormat(adapter);
+  const presentationFormat = navigator.gpu.getPreferredCanvasFormat();
   context.configure({
     device,
     format: presentationFormat,
@@ -78,7 +78,7 @@ async function main(canvas: HTMLCanvasElement) {
   }
   `;
 
-  function createBuffer(device, data, usage) {
+  function createBuffer(device: GPUDevice, data: Float32Array<ArrayBuffer> | Uint16Array<ArrayBuffer>, usage: GPUFlagsConstant) {
     const buffer = device.createBuffer({
       size: data.byteLength,
       usage,
@@ -223,7 +223,7 @@ async function main(canvas: HTMLCanvasElement) {
     },
   };
 
-  function resizeToDisplaySize(device, canvasInfo) {
+  function resizeToDisplaySize(device: GPUDevice, canvasInfo) {
     const {
       canvas,
       renderTarget,
@@ -271,7 +271,7 @@ async function main(canvas: HTMLCanvasElement) {
     return needResize;
   }
 
-  function render(time) {
+  function render(time: number) {
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
@@ -319,13 +319,8 @@ async function main(canvas: HTMLCanvasElement) {
   requestAnimationFrame(render);
 }
 
-function fail(msg) {
-  const elem = document.querySelector('#fail');
-  const contentElem = elem.querySelector('.content');
-  elem.style.display = '';
-  contentElem.textContent = msg;
+function fail(msg: string) {
+  alert(`failed: ${msg}`);
 }
-
-// main();
 
 export default main;

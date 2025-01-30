@@ -20,6 +20,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/three": "^0.172.0",
+    "@webgpu/types": "^0.1.53",
     "eslint": "^9",
     "eslint-config-next": "15.1.6",
     "postcss": "^8",
