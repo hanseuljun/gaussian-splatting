@@ -1,6 +1,6 @@
 // see https://webgpufundamentals.org/webgpu/lessons/webgpu-utils.html#wgpu-matrix
 import * as THREE from 'three';
-import { getViewProjection } from './camera';
+import Camera from './camera';
 
 async function main(canvas: HTMLCanvasElement) {
   const adapter = await navigator.gpu.requestAdapter();
@@ -292,7 +292,8 @@ async function main(canvas: HTMLCanvasElement) {
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
-    const viewProjection = getViewProjection(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
+    const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
+    const viewProjection = camera.getViewProjection();
     const world = new THREE.Matrix4().makeRotationY(time);
     world.invert().transpose().toArray(worldInverseTranspose);
     viewProjection.multiply(world).toArray(worldViewProjection);
