@@ -23,6 +23,12 @@ class Camera {
     const viewProjection = projection.multiply(view);
     return viewProjection;
   }
+
+  move(dx: number, dy: number, dz: number) {
+    this.position.x += dx;
+    this.position.y += dy;
+    this.position.z += dz;
+  }
 }
 
 export default Camera;

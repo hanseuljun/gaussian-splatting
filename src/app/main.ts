@@ -106,7 +106,7 @@ async function main(canvas: HTMLCanvasElement) {
     },
     primitive: {
       topology: 'triangle-list',
-      cullMode: 'back',
+      cullMode: 'none',
     },
     depthStencil: {
       depthWriteEnabled: true,
@@ -146,11 +146,11 @@ async function main(canvas: HTMLCanvasElement) {
 
   const positions = new Float32Array([1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1]);
   const colors   = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
-  const indices   = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
+  let indices   = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
 
-  const positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
-  const colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
-  const indicesBuffer = createUint32Buffer(device, indices, GPUBufferUsage.INDEX);
+  let positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
+  let colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
+  let indicesBuffer = createUint32Buffer(device, indices, GPUBufferUsage.INDEX);
 
   const vUniformBufferSize = 2 * 16 * 4; // 2 mat4s * 16 floats per mat * 4 bytes per float
 
@@ -296,25 +296,29 @@ async function main(canvas: HTMLCanvasElement) {
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
+    let dx = 0;
+    let dy = 0;
+    let dz = 0;
     if (wPressed) {
-      camera.position.y += 0.01;
+      dy += 0.01;
     }
     if (sPressed) {
-      camera.position.y -= 0.01;
+      dy -= 0.01;
     }
     if (aPressed) {
-      camera.position.x -= 0.01;
+      dx -= 0.01;
     }
     if (dPressed) {
-      camera.position.x += 0.01;
+      dx += 0.01;
     }
     if (qPressed) {
-      camera.position.z -= 0.01;
+      dz -= 0.01;
     }
     if (ePressed) {
-      camera.position.z += 0.01;
+      dz += 0.01;
     }
-    console.log(`camera.position: ${JSON.stringify(camera.position)}`);
+    camera.move(dx, dy, dz);
+    // console.log(`camera.position: ${JSON.stringify(camera.position)}`);
     const viewProjection = camera.getViewProjection();
     const model = new THREE.Matrix4().makeRotationY(time);
     viewProjection.multiply(model).toArray(mvp);
@@ -350,11 +354,18 @@ async function main(canvas: HTMLCanvasElement) {
     return;
   }
 
-  // const plyPositions = new Float32Array(plyVertices.splice(0, 24).map((v) => [v.x, v.y, v.z]).flat());
-  // const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
-  // positionBuffer = plyPositionBuffer;
-  // const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
-  // const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
+  const plyPositions = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.x, v.y, v.z]).flat());
+  const plyColors = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.f_dc_0, v.f_dc_1, v.f_dc_2]).flat());
+  const plyIndices = new Uint32Array([...Array(240).keys()]);
+
+  console.log(`plyPositions: ${plyPositions}`);
+  indices = plyIndices;
+  const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
+  const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
+  const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
+  positionBuffer = plyPositionBuffer;
+  colorBuffer = plyColorBuffer;
+  indicesBuffer = plyIndicesBuffer;
 }
 
 function fail(msg: string) {
