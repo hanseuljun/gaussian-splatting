@@ -236,6 +236,8 @@ async function main(canvas: HTMLCanvasElement) {
     },
   };
 
+  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
+
   function resizeToDisplaySize(device: GPUDevice, canvasInfo) {
     const {
       canvas,
@@ -292,7 +294,6 @@ async function main(canvas: HTMLCanvasElement) {
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
-    const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
     const viewProjection = camera.getViewProjection();
     const world = new THREE.Matrix4().makeRotationY(time);
     world.invert().transpose().toArray(worldInverseTranspose);
@@ -327,6 +328,53 @@ async function main(canvas: HTMLCanvasElement) {
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);
+
+  async function readPlyFile() {
+    try {
+      const response = await fetch('./gs_FF3_lumix_4k 3.ply');
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
+      }
+      // const text = await response.text();
+      const buffer = await response.arrayBuffer();
+      // Process the binary PLY file data here
+      // console.log(`text.length: ${text.length}`);
+      console.log(`buffer.byteLength: ${buffer.byteLength}`);
+      const decoder = new TextDecoder("utf-8");
+      const plyText = decoder.decode(buffer.slice(0, 10000));
+      const lastHeaderIndex = plyText.indexOf("end_header") + "end_header".length + 1;
+      const plySubText = plyText.slice(undefined, lastHeaderIndex);
+      console.log(`plyText: ${plyText}`);
+      console.log(`plySubText: ${plySubText}`);
+
+      let vertexCount = 0;
+      let properties = [];
+      const lines = plySubText.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('element vertex ')) {
+          vertexCount = parseInt(line.split(' ')[2]);
+        }
+        else if (line.startsWith('property float ')) {
+          properties.push(line.split(' ')[2]);
+        }
+      }
+      console.log(`vertexCount: ${vertexCount}`);
+      console.log(`properties: ${properties}`);
+
+      const float32Array = new Float32Array(buffer.slice(lastHeaderIndex, lastHeaderIndex + 4 * 100));
+      console.log(`float32Array: ${float32Array}`);
+      return buffer;
+    } catch (error) {
+      console.error('Error loading PLY file:', error);
+      return null;
+    }
+  }
+
+  const plyData = await readPlyFile();
+  if (!plyData) {
+    fail('Failed to load PLY file');
+    return;
+  }
 }
 
 function fail(msg: string) {
