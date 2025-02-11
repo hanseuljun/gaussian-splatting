@@ -23,17 +23,26 @@ async function main(canvas: HTMLCanvasElement) {
     format: presentationFormat,
   });
 
-  const canvasInfo = {
-    canvas,
-    context,
-    presentationFormat,
+  class CanvasInfo {
+    canvas: HTMLCanvasElement;
+    context: GPUCanvasContext;
+    presentationFormat: GPUTextureFormat;
     // these are filled out in resizeToDisplaySize
-    renderTarget: undefined,
-    renderTargetView: undefined,
-    depthTexture: undefined,
-    depthTextureView: undefined,
-    sampleCount: 4,  // can be 1 or 4
-  };
+    renderTarget: GPUTexture | undefined;
+    renderTargetView: GPUTextureView | undefined;
+    depthTexture: GPUTexture | undefined;
+    depthTextureView: GPUTextureView | undefined;
+    sampleCount: number; // can be 1 or 4
+
+    constructor(canvas: HTMLCanvasElement, context: GPUCanvasContext, presentationFormat: GPUTextureFormat, sampleCount: number) {
+      this.canvas = canvas;
+      this.context = context;
+      this.presentationFormat = presentationFormat;
+      this.sampleCount = sampleCount;
+    }
+  }
+
+  const canvasInfo = new CanvasInfo(canvas, context, presentationFormat, 4);
 
   const shaderSrc = `
   struct VSUniforms {
@@ -239,7 +248,7 @@ async function main(canvas: HTMLCanvasElement) {
 
   const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
 
-  function resizeToDisplaySize(device: GPUDevice, canvasInfo) {
+  function resizeToDisplaySize(device: GPUDevice, canvasInfo: CanvasInfo) {
     const {
       canvas,
       renderTarget,
