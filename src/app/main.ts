@@ -188,7 +188,6 @@ async function main(canvas: HTMLCanvasElement) {
   };
 
   const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
-  const cameraPosition = new THREE.Vector3(0, 0, 0);
 
   let wPressed = false;
   let sPressed = false;
@@ -198,7 +197,6 @@ async function main(canvas: HTMLCanvasElement) {
   let ePressed = false;
 
   function onkeydown(event: KeyboardEvent) {
-    console.log(event.key);
     if (event.key === 'w') {
       wPressed = true;
     }
@@ -299,27 +297,26 @@ async function main(canvas: HTMLCanvasElement) {
     resizeToDisplaySize(device, canvasInfo);
 
     if (wPressed) {
-      cameraPosition.y += 0.01;
+      camera.position.y += 0.01;
     }
     if (sPressed) {
-      cameraPosition.y -= 0.01;
+      camera.position.y -= 0.01;
     }
     if (aPressed) {
-      cameraPosition.x -= 0.01;
+      camera.position.x -= 0.01;
     }
     if (dPressed) {
-      cameraPosition.x += 0.01;
+      camera.position.x += 0.01;
     }
     if (qPressed) {
-      cameraPosition.z -= 0.01;
+      camera.position.z -= 0.01;
     }
     if (ePressed) {
-      cameraPosition.z += 0.01;
+      camera.position.z += 0.01;
     }
+    console.log(`camera.position: ${JSON.stringify(camera.position)}`);
     const viewProjection = camera.getViewProjection();
-    const cameraTRS = new THREE.Matrix4().makeTranslation(cameraPosition);
-    const cubeTRS = new THREE.Matrix4().makeRotationY(time);
-    const model = cubeTRS.multiply(cameraTRS.invert());
+    const model = new THREE.Matrix4().makeRotationY(time);
     viewProjection.multiply(model).toArray(mvp);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);

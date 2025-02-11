@@ -1,6 +1,6 @@
 async function readPlyFile(file_path: string) {
     try {
-      const response = await fetch('./gs_FF3_lumix_4k 3.ply');
+      const response = await fetch(file_path);
       if (!response.ok) {
         throw new Error('Network response was not ok');
       }
