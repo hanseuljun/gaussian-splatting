@@ -53,40 +53,25 @@ async function main(canvas: HTMLCanvasElement) {
 
   struct MyVSInput {
       @location(0) position: vec4f,
-      @location(1) normal: vec3f,
-      @location(2) texcoord: vec2f,
+      @location(1) color: vec3f,
   };
 
   struct MyVSOutput {
     @builtin(position) position: vec4f,
-    @location(0) normal: vec3f,
-    @location(1) texcoord: vec2f,
+    @location(0) color: vec3f,
   };
 
   @vertex
   fn myVSMain(v: MyVSInput) -> MyVSOutput {
     var vsOut: MyVSOutput;
     vsOut.position = vsUniforms.worldViewProjection * v.position;
-    vsOut.normal = v.normal;
-    vsOut.texcoord = v.texcoord;
+    vsOut.color = v.color;
     return vsOut;
   }
 
-  struct FSUniforms {
-    lightDirection: vec3f,
-  };
-
-  @group(0) @binding(1) var<uniform> fsUniforms: FSUniforms;
-  @group(0) @binding(2) var diffuseSampler: sampler;
-  @group(0) @binding(3) var diffuseTexture: texture_2d<f32>;
-
   @fragment
   fn myFSMain(v: MyVSOutput) -> @location(0) vec4f {
-    var diffuseColor = textureSample(diffuseTexture, diffuseSampler, v.texcoord);
-    var a_normal = normalize(v.normal);
-    var l = dot(a_normal, fsUniforms.lightDirection) * 0.5 + 0.5;
-    // return vec4f(diffuseColor.rgb * l, diffuseColor.a);
-    return vec4f(a_normal, 1.0);
+    return vec4f(v.color, 1.0);
   }
   `;
 
@@ -115,38 +100,12 @@ async function main(canvas: HTMLCanvasElement) {
   }
 
   const positions = new Float32Array([1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1]);
-  const normals   = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
-  const texcoords = new Float32Array([1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1, 1, 0, 0, 0, 0, 1, 1, 1]);
+  const colors   = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
   const indices   = new Uint16Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
 
   const positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
-  const normalBuffer = createFloat32Buffer(device, normals, GPUBufferUsage.VERTEX);
-  const texcoordBuffer = createFloat32Buffer(device, texcoords, GPUBufferUsage.VERTEX);
+  const colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
   const indicesBuffer = createUint16Buffer(device, indices, GPUBufferUsage.INDEX);
-
-  const tex = device.createTexture({
-    size: [2, 2],
-    format: 'rgba8unorm',
-    usage:
-      GPUTextureUsage.TEXTURE_BINDING |
-      GPUTextureUsage.COPY_DST,
-  });
-  device.queue.writeTexture(
-      { texture: tex },
-      new Uint8Array([
-        255, 255, 128, 255,
-        128, 255, 255, 255,
-        255, 128, 255, 255,
-        255, 128, 128, 255,
-      ]),
-      { bytesPerRow: 8, rowsPerImage: 2 },
-      { width: 2, height: 2 },
-  );
-
-  const sampler = device.createSampler({
-    magFilter: 'nearest',
-    minFilter: 'nearest',
-  });
 
   const shaderModule = device.createShaderModule({code: shaderSrc});
 
@@ -168,13 +127,6 @@ async function main(canvas: HTMLCanvasElement) {
           arrayStride: 3 * 4, // 3 floats, 4 bytes each
           attributes: [
             {shaderLocation: 1, offset: 0, format: 'float32x3'},
-          ],
-        },
-        // texcoords
-        {
-          arrayStride: 2 * 4, // 2 floats, 4 bytes each
-          attributes: [
-            {shaderLocation: 2, offset: 0, format: 'float32x2',},
           ],
         },
       ],
@@ -202,30 +154,20 @@ async function main(canvas: HTMLCanvasElement) {
   });
 
   const vUniformBufferSize = 2 * 16 * 4; // 2 mat4s * 16 floats per mat * 4 bytes per float
-  const fUniformBufferSize = 3 * 4;      // 1 vec3 * 3 floats per vec3 * 4 bytes per float
 
   const vsUniformBuffer = device.createBuffer({
     size: Math.max(16, vUniformBufferSize),
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const fsUniformBuffer = device.createBuffer({
-    size: Math.max(16, fUniformBufferSize),
-    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-  });
   const vsUniformValues = new Float32Array(2 * 16); // 2 mat4s
   const worldViewProjection = vsUniformValues.subarray(0, 16);
   const worldInverseTranspose = vsUniformValues.subarray(16, 32);
-  const fsUniformValues = new Float32Array(3);  // 1 vec3
-  const lightDirection = fsUniformValues.subarray(0, 3);
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
     entries: [
       { binding: 0, resource: { buffer: vsUniformBuffer } },
-      { binding: 1, resource: { buffer: fsUniformBuffer } },
-      { binding: 2, resource: sampler },
-      { binding: 3, resource: tex.createView() },
     ],
   });
 
@@ -310,10 +252,7 @@ async function main(canvas: HTMLCanvasElement) {
     world.invert().transpose().toArray(worldInverseTranspose);
     viewProjection.multiply(world).toArray(worldViewProjection);
 
-    new THREE.Vector3(1, 8, -10).normalize().toArray(lightDirection);
-
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
-    device.queue.writeBuffer(fsUniformBuffer, 0, fsUniformValues);
 
     if (canvasInfo.sampleCount === 1) {
         const colorTexture = context.getCurrentTexture();
@@ -329,8 +268,7 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, positionBuffer);
-    passEncoder.setVertexBuffer(1, normalBuffer);
-    passEncoder.setVertexBuffer(2, texcoordBuffer);
+    passEncoder.setVertexBuffer(1, colorBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint16');
     passEncoder.drawIndexed(indices.length);
     passEncoder.end();
