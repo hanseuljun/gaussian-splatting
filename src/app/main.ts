@@ -46,8 +46,7 @@ async function main(canvas: HTMLCanvasElement) {
 
   const shaderSrc = `
   struct VSUniforms {
-    worldViewProjection: mat4x4f,
-    worldInverseTranspose: mat4x4f,
+    mvp: mat4x4f,
   };
   @group(0) @binding(0) var<uniform> vsUniforms: VSUniforms;
 
@@ -64,7 +63,7 @@ async function main(canvas: HTMLCanvasElement) {
   @vertex
   fn myVSMain(v: MyVSInput) -> MyVSOutput {
     var vsOut: MyVSOutput;
-    vsOut.position = vsUniforms.worldViewProjection * v.position;
+    vsOut.position = vsUniforms.mvp * v.position;
     vsOut.color = v.color;
     return vsOut;
   }
@@ -75,42 +74,10 @@ async function main(canvas: HTMLCanvasElement) {
   }
   `;
 
-  function createFloat32Buffer(device: GPUDevice, data: Float32Array, usage: GPUFlagsConstant) {
-    const buffer = device.createBuffer({
-      size: data.byteLength,
-      usage,
-      mappedAtCreation: true,
-    });
-    const dst = new Float32Array(buffer.getMappedRange());
-    dst.set(data);
-    buffer.unmap();
-    return buffer;
-  }
-
-  function createUint16Buffer(device: GPUDevice, data: Uint16Array, usage: GPUFlagsConstant) {
-    const buffer = device.createBuffer({
-      size: data.byteLength,
-      usage,
-      mappedAtCreation: true,
-    });
-    const dst = new Uint16Array(buffer.getMappedRange());
-    dst.set(data);
-    buffer.unmap();
-    return buffer;
-  }
-
-  const positions = new Float32Array([1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1]);
-  const colors   = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
-  const indices   = new Uint16Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
-
-  const positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
-  const colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
-  const indicesBuffer = createUint16Buffer(device, indices, GPUBufferUsage.INDEX);
-
   const shaderModule = device.createShaderModule({code: shaderSrc});
 
   const pipeline = device.createRenderPipeline({
-    label: 'fake lighting',
+    label: 'gaussian splat',
     layout: 'auto',
     vertex: {
       module: shaderModule,
@@ -153,6 +120,38 @@ async function main(canvas: HTMLCanvasElement) {
     }),
   });
 
+  function createFloat32Buffer(device: GPUDevice, data: Float32Array, usage: GPUFlagsConstant) {
+    const buffer = device.createBuffer({
+      size: data.byteLength,
+      usage,
+      mappedAtCreation: true,
+    });
+    const dst = new Float32Array(buffer.getMappedRange());
+    dst.set(data);
+    buffer.unmap();
+    return buffer;
+  }
+
+  function createUint32Buffer(device: GPUDevice, data: Uint32Array, usage: GPUFlagsConstant) {
+    const buffer = device.createBuffer({
+      size: data.byteLength,
+      usage,
+      mappedAtCreation: true,
+    });
+    const dst = new Uint32Array(buffer.getMappedRange());
+    dst.set(data);
+    buffer.unmap();
+    return buffer;
+  }
+
+  const positions = new Float32Array([1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1]);
+  const colors   = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
+  const indices   = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
+
+  const positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
+  const colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
+  const indicesBuffer = createUint32Buffer(device, indices, GPUBufferUsage.INDEX);
+
   const vUniformBufferSize = 2 * 16 * 4; // 2 mat4s * 16 floats per mat * 4 bytes per float
 
   const vsUniformBuffer = device.createBuffer({
@@ -160,9 +159,8 @@ async function main(canvas: HTMLCanvasElement) {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const vsUniformValues = new Float32Array(2 * 16); // 2 mat4s
-  const worldViewProjection = vsUniformValues.subarray(0, 16);
-  const worldInverseTranspose = vsUniformValues.subarray(16, 32);
+  const vsUniformValues = new Float32Array(16); // 1 mat4
+  const mvp = vsUniformValues.subarray(0, 16);
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
@@ -190,7 +188,60 @@ async function main(canvas: HTMLCanvasElement) {
   };
 
   const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.5, 10);
+  const cameraPosition = new THREE.Vector3(0, 0, 0);
 
+  let wPressed = false;
+  let sPressed = false;
+  let aPressed = false;
+  let dPressed = false;
+  let qPressed = false;
+  let ePressed = false;
+
+  function onkeydown(event: KeyboardEvent) {
+    console.log(event.key);
+    if (event.key === 'w') {
+      wPressed = true;
+    }
+    if (event.key === 's') {
+      sPressed = true;
+    }
+    if (event.key === 'a') {
+      aPressed = true;
+    }
+    if (event.key === 'd') {
+      dPressed = true;
+    }
+    if (event.key === 'q') {
+      qPressed = true;
+    }
+    if (event.key === 'e') {
+      ePressed = true;
+    }
+  }
+
+  function onkeyup(event: KeyboardEvent) {
+    if (event.key === 'w') {
+      wPressed = false;
+    }
+    if (event.key === 's') {
+      sPressed = false;
+    }
+    if (event.key === 'a') {
+      aPressed = false;
+    }
+    if (event.key === 'd') {
+      dPressed = false;
+    }
+    if (event.key === 'q') {
+      qPressed = false;
+    }
+    if (event.key === 'e') {
+      ePressed = false;
+    }
+  }
+
+  window.addEventListener('keydown', onkeydown);
+  window.addEventListener('keyup', onkeyup);
   function resizeToDisplaySize(device: GPUDevice, canvasInfo: CanvasInfo) {
     const {
       canvas,
@@ -247,10 +298,29 @@ async function main(canvas: HTMLCanvasElement) {
     time *= 0.001;
     resizeToDisplaySize(device, canvasInfo);
 
+    if (wPressed) {
+      cameraPosition.y += 0.01;
+    }
+    if (sPressed) {
+      cameraPosition.y -= 0.01;
+    }
+    if (aPressed) {
+      cameraPosition.x -= 0.01;
+    }
+    if (dPressed) {
+      cameraPosition.x += 0.01;
+    }
+    if (qPressed) {
+      cameraPosition.z -= 0.01;
+    }
+    if (ePressed) {
+      cameraPosition.z += 0.01;
+    }
     const viewProjection = camera.getViewProjection();
-    const world = new THREE.Matrix4().makeRotationY(time);
-    world.invert().transpose().toArray(worldInverseTranspose);
-    viewProjection.multiply(world).toArray(worldViewProjection);
+    const cameraTRS = new THREE.Matrix4().makeTranslation(cameraPosition);
+    const cubeTRS = new THREE.Matrix4().makeRotationY(time);
+    const model = cubeTRS.multiply(cameraTRS.invert());
+    viewProjection.multiply(model).toArray(mvp);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 
@@ -269,7 +339,7 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, positionBuffer);
     passEncoder.setVertexBuffer(1, colorBuffer);
-    passEncoder.setIndexBuffer(indicesBuffer, 'uint16');
+    passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indices.length);
     passEncoder.end();
     device.queue.submit([commandEncoder.finish()]);
@@ -282,6 +352,12 @@ async function main(canvas: HTMLCanvasElement) {
     fail('Failed to load PLY file');
     return;
   }
+
+  // const plyPositions = new Float32Array(plyVertices.splice(0, 24).map((v) => [v.x, v.y, v.z]).flat());
+  // const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
+  // positionBuffer = plyPositionBuffer;
+  // const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
+  // const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
 }
 
 function fail(msg: string) {
