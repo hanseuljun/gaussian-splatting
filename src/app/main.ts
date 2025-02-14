@@ -193,8 +193,8 @@ async function main(canvas: HTMLCanvasElement) {
   let sPressed = false;
   let aPressed = false;
   let dPressed = false;
-  let qPressed = false;
-  let ePressed = false;
+  let upPressed = false;
+  let downPressed = false;
 
   function onkeydown(event: KeyboardEvent) {
     if (event.key === 'w') {
@@ -209,11 +209,11 @@ async function main(canvas: HTMLCanvasElement) {
     if (event.key === 'd') {
       dPressed = true;
     }
-    if (event.key === 'q') {
-      qPressed = true;
+    if (event.key === 'ArrowUp') {
+      upPressed = true;
     }
-    if (event.key === 'e') {
-      ePressed = true;
+    if (event.key === 'ArrowDown') {
+      downPressed = true;
     }
   }
 
@@ -230,13 +230,44 @@ async function main(canvas: HTMLCanvasElement) {
     if (event.key === 'd') {
       dPressed = false;
     }
-    if (event.key === 'q') {
-      qPressed = false;
+    if (event.key === 'ArrowUp') {
+      upPressed = false;
     }
-    if (event.key === 'e') {
-      ePressed = false;
+    if (event.key === 'ArrowDown') {
+      downPressed = false;
     }
   }
+
+  let mousePressed = false;
+  let lastX = 0;
+  let lastY = 0;
+
+  function onmousedown(event: MouseEvent) {
+    mousePressed = true;
+    lastX = event.clientX;
+    lastY = event.clientY;
+  }
+
+  function onmousemove(event: MouseEvent) {
+    if (mousePressed) {
+      const deltaX = event.clientX - lastX;
+      const deltaY = event.clientY - lastY;
+      // Use deltaX and deltaY for camera rotation or other purposes
+      lastX = event.clientX;
+      lastY = event.clientY;
+
+      const dq = new THREE.Quaternion().setFromEuler(new THREE.Euler(-deltaY * 0.003, -deltaX * 0.003, 0));
+      camera.rotate(dq);
+    }
+  }
+
+  function onmouseup() {
+    mousePressed = false;
+  }
+
+  window.addEventListener('mousedown', onmousedown);
+  window.addEventListener('mousemove', onmousemove);
+  window.addEventListener('mouseup', onmouseup);
 
   window.addEventListener('keydown', onkeydown);
   window.addEventListener('keyup', onkeyup);
@@ -300,25 +331,24 @@ async function main(canvas: HTMLCanvasElement) {
     let dy = 0;
     let dz = 0;
     if (wPressed) {
-      dy += 0.01;
+      dz -= 0.03;
     }
     if (sPressed) {
-      dy -= 0.01;
+      dz += 0.03;
     }
     if (aPressed) {
-      dx -= 0.01;
+      dx -= 0.03;
     }
     if (dPressed) {
-      dx += 0.01;
+      dx += 0.03;
     }
-    if (qPressed) {
-      dz -= 0.01;
+    if (upPressed) {
+      dy += 0.03;
     }
-    if (ePressed) {
-      dz += 0.01;
+    if (downPressed) {
+      dy -= 0.03;
     }
     camera.move(dx, dy, dz);
-    // console.log(`camera.position: ${JSON.stringify(camera.position)}`);
     const viewProjection = camera.getViewProjection();
     const model = new THREE.Matrix4().makeRotationY(time);
     viewProjection.multiply(model).toArray(mvp);
@@ -348,25 +378,31 @@ async function main(canvas: HTMLCanvasElement) {
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);
-  const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
-  if (!plyVertices) {
-    fail('Failed to load PLY file');
-    return;
+
+  async function loadGaussianSplatPly() {
+    const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    if (!plyVertices) {
+      fail('Failed to load PLY file');
+      return;
+    }
+
+    const plyPositions = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.x, v.y, v.z]).flat());
+    const plyColors = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.f_dc_0, v.f_dc_1, v.f_dc_2]).flat());
+    const plyIndices = new Uint32Array([...Array(240).keys()]);
+
+    console.log(`plyPositions: ${plyPositions}`);
+    indices = plyIndices;
+    const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
+    const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
+    const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
+    positionBuffer = plyPositionBuffer;
+    colorBuffer = plyColorBuffer;
+    indicesBuffer = plyIndicesBuffer;
   }
 
-  const plyPositions = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.x, v.y, v.z]).flat());
-  const plyColors = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.f_dc_0, v.f_dc_1, v.f_dc_2]).flat());
-  const plyIndices = new Uint32Array([...Array(240).keys()]);
-
-  console.log(`plyPositions: ${plyPositions}`);
-  indices = plyIndices;
-  const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
-  const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
-  const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
-  positionBuffer = plyPositionBuffer;
-  colorBuffer = plyColorBuffer;
-  indicesBuffer = plyIndicesBuffer;
+  await loadGaussianSplatPly();
 }
+
 
 function fail(msg: string) {
   alert(`failed: ${msg}`);
