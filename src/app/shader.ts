@@ -6,12 +6,12 @@ struct VSUniforms {
 
 struct MyVSInput {
     @location(0) position: vec4f,
-    @location(1) color: vec3f,
+    @location(1) color: vec4f,
 };
 
 struct MyVSOutput {
   @builtin(position) position: vec4f,
-  @location(0) color: vec3f,
+  @location(0) color: vec4f,
 };
 
 @vertex
@@ -24,7 +24,8 @@ fn myVSMain(v: MyVSInput) -> MyVSOutput {
 
 @fragment
 fn myFSMain(v: MyVSOutput) -> @location(0) vec4f {
-  return vec4f(v.color, 1.0);
+  // return vec4f(v.color.rgb * v.color.a, v.color.a);
+  return vec4f(v.color.rgb, 1.0);
 }
 `;
 

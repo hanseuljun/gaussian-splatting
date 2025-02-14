@@ -23,6 +23,7 @@ async function main(canvas: HTMLCanvasElement) {
   context.configure({
     device,
     format: presentationFormat,
+    alphaMode: 'premultiplied',
   });
 
   const canvasInfo = new CanvasInfo(canvas, context, presentationFormat, 4);
@@ -30,7 +31,7 @@ async function main(canvas: HTMLCanvasElement) {
   const shaderModule = device.createShaderModule({code: shaderCode});
 
   const pipeline = device.createRenderPipeline({
-    label: 'gaussian splat',
+    label: 'gaussian splating',
     layout: 'auto',
     vertex: {
       module: shaderModule,
@@ -42,11 +43,11 @@ async function main(canvas: HTMLCanvasElement) {
             {shaderLocation: 0, offset: 0, format: 'float32x3'},
           ],
         },
-        // normals
+        // colors
         {
-          arrayStride: 3 * 4, // 3 floats, 4 bytes each
+          arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 1, offset: 0, format: 'float32x3'},
+            {shaderLocation: 1, offset: 0, format: 'float32x4'},
           ],
         },
       ],
@@ -98,7 +99,7 @@ async function main(canvas: HTMLCanvasElement) {
     ],
   });
 
-  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 10);
+  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
 
   let wPressed = false;
   let sPressed = false;
@@ -215,9 +216,8 @@ async function main(canvas: HTMLCanvasElement) {
     }
     camera.move(dx, dy, dz);
     const viewProjection = camera.getViewProjection();
-    // const model = new THREE.Matrix4().makeRotationY(time);
-    // viewProjection.multiply(model).toArray(mvp);
-    viewProjection.toArray(mvp);
+    const model = new THREE.Matrix4().identity();
+    viewProjection.multiply(model).toArray(mvp);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 
@@ -241,9 +241,9 @@ async function main(canvas: HTMLCanvasElement) {
     const renderPassDescriptor: GPURenderPassDescriptor = {
       colorAttachments: [
         {
-          view: colorView, // Assigned later
-          resolveTarget: colorResolveTarget, // Assigned Later
-          clearValue: [0.5, 0.5, 0.5, 1],
+          view: colorView,
+          resolveTarget: colorResolveTarget,
+          clearValue: [0.2, 0.2, 0.2, 1],
           loadOp: 'clear',
           storeOp: 'store',
         },
@@ -272,7 +272,7 @@ async function main(canvas: HTMLCanvasElement) {
   requestAnimationFrame(render);
 
   async function loadGaussianSplatPly() {
-    const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    let plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
     if (!plyVertices) {
       fail('Failed to load PLY file');
       return;
@@ -287,10 +287,15 @@ async function main(canvas: HTMLCanvasElement) {
         const x = v.x;
         const y = v.y;
         const z = v.z;
-        positions.push([x + size, y + size, z]);
-        positions.push([x - size, y + size, z]);
-        positions.push([x - size, y - size, z]);
-        positions.push([x + size, y - size, z]);
+        const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
+        const v0 = new THREE.Vector3(size, size, 0).applyQuaternion(rotation);
+        const v1 = new THREE.Vector3(-size, size, 0).applyQuaternion(rotation);
+        const v2 = new THREE.Vector3(-size, -size, 0).applyQuaternion(rotation);
+        const v3 = new THREE.Vector3(size, -size, 0).applyQuaternion(rotation);
+        positions.push([x + v0.x, y + v0.y, z + v0.z]);
+        positions.push([x + v1.x, y + v1.y, z + v1.z]);
+        positions.push([x + v2.x, y + v2.y, z + v2.z]);
+        positions.push([x + v3.x, y + v3.y, z + v3.z]);
       }
       return positions;
     }
@@ -298,13 +303,15 @@ async function main(canvas: HTMLCanvasElement) {
     function createQuadColors() {
       const colors = [];
       for (const v of plyVertices) {
-        const r = v.f_dc_0;
-        const g = v.f_dc_1;
-        const b = v.f_dc_2;
-        colors.push([r, g, b]);
-        colors.push([r, g, b]);
-        colors.push([r, g, b]);
-        colors.push([r, g, b]);
+        const SH_C0 = 0.28209479177387814;
+        const r = 0.5 + SH_C0 * v.f_dc_0;
+        const g = 0.5 + SH_C0 * v.f_dc_1;
+        const b = 0.5 + SH_C0 * v.f_dc_2;
+        const a = 1.0 / (1.0 + Math.exp(-v.opacity));
+        colors.push([r, g, b, a]);
+        colors.push([r, g, b, a]);
+        colors.push([r, g, b, a]);
+        colors.push([r, g, b, a]);
       }
       return colors;
     }
@@ -334,7 +341,7 @@ async function main(canvas: HTMLCanvasElement) {
     indicesBuffer = plyIndicesBuffer;
   }
 
-  await loadGaussianSplatPly();
+  loadGaussianSplatPly();
 }
 
 
