@@ -2,6 +2,8 @@
 import * as THREE from 'three';
 import Camera from './camera';
 import readPlyFile from './ply';
+import shaderCode from './shader';
+import { CanvasInfo, createFloat32Buffer, createUint32Buffer } from './utils';
 
 async function main(canvas: HTMLCanvasElement) {
   const adapter = await navigator.gpu.requestAdapter();
@@ -23,58 +25,9 @@ async function main(canvas: HTMLCanvasElement) {
     format: presentationFormat,
   });
 
-  class CanvasInfo {
-    canvas: HTMLCanvasElement;
-    context: GPUCanvasContext;
-    presentationFormat: GPUTextureFormat;
-    // these are filled out in resizeToDisplaySize
-    renderTarget: GPUTexture | undefined;
-    renderTargetView: GPUTextureView | undefined;
-    depthTexture: GPUTexture | undefined;
-    depthTextureView: GPUTextureView | undefined;
-    sampleCount: number; // can be 1 or 4
-
-    constructor(canvas: HTMLCanvasElement, context: GPUCanvasContext, presentationFormat: GPUTextureFormat, sampleCount: number) {
-      this.canvas = canvas;
-      this.context = context;
-      this.presentationFormat = presentationFormat;
-      this.sampleCount = sampleCount;
-    }
-  }
-
   const canvasInfo = new CanvasInfo(canvas, context, presentationFormat, 4);
 
-  const shaderSrc = `
-  struct VSUniforms {
-    mvp: mat4x4f,
-  };
-  @group(0) @binding(0) var<uniform> vsUniforms: VSUniforms;
-
-  struct MyVSInput {
-      @location(0) position: vec4f,
-      @location(1) color: vec3f,
-  };
-
-  struct MyVSOutput {
-    @builtin(position) position: vec4f,
-    @location(0) color: vec3f,
-  };
-
-  @vertex
-  fn myVSMain(v: MyVSInput) -> MyVSOutput {
-    var vsOut: MyVSOutput;
-    vsOut.position = vsUniforms.mvp * v.position;
-    vsOut.color = v.color;
-    return vsOut;
-  }
-
-  @fragment
-  fn myFSMain(v: MyVSOutput) -> @location(0) vec4f {
-    return vec4f(v.color, 1.0);
-  }
-  `;
-
-  const shaderModule = device.createShaderModule({code: shaderSrc});
+  const shaderModule = device.createShaderModule({code: shaderCode});
 
   const pipeline = device.createRenderPipeline({
     label: 'gaussian splat',
@@ -120,33 +73,9 @@ async function main(canvas: HTMLCanvasElement) {
     }),
   });
 
-  function createFloat32Buffer(device: GPUDevice, data: Float32Array, usage: GPUFlagsConstant) {
-    const buffer = device.createBuffer({
-      size: data.byteLength,
-      usage,
-      mappedAtCreation: true,
-    });
-    const dst = new Float32Array(buffer.getMappedRange());
-    dst.set(data);
-    buffer.unmap();
-    return buffer;
-  }
-
-  function createUint32Buffer(device: GPUDevice, data: Uint32Array, usage: GPUFlagsConstant) {
-    const buffer = device.createBuffer({
-      size: data.byteLength,
-      usage,
-      mappedAtCreation: true,
-    });
-    const dst = new Uint32Array(buffer.getMappedRange());
-    dst.set(data);
-    buffer.unmap();
-    return buffer;
-  }
-
   const positions = new Float32Array([1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1]);
-  const colors   = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
-  let indices   = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
+  const colors = new Float32Array([1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 1, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0, 0.5, 0.5, 0]);
+  let indices = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
 
   let positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
   let colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
