@@ -386,11 +386,41 @@ async function main(canvas: HTMLCanvasElement) {
       return;
     }
 
-    const plyPositions = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.x, v.y, v.z]).flat());
-    const plyColors = new Float32Array(plyVertices.splice(0, 240).map((v) => [v.f_dc_0, v.f_dc_1, v.f_dc_2]).flat());
-    const plyIndices = new Uint32Array([...Array(240).keys()]);
+    console.log(`plyVertices[0]: ${plyVertices[0]}`);
 
-    console.log(`plyPositions: ${plyPositions}`);
+    function createQuadPositions(v) {
+      const x = v.x;
+      const y = v.y;
+      const z = v.z;
+      return [
+        [x + 0.1, y + 0.1, z],
+        [x - 0.1, y + 0.1, z],
+        [x - 0.1, y - 0.1, z],
+        [x + 0.1, y - 0.1, z],
+      ];
+    }
+
+    function createQuadColors(v) {
+      const r = v.f_dc_0;
+      const g = v.f_dc_1;
+      const b = v.f_dc_2;
+      return [
+        [r, g, b],
+        [r, g, b],
+        [r, g, b],
+        [r, g, b],
+      ];
+    }
+
+    function createQuadIndices(v) {
+      return [0, 1, 2, 0, 2, 3];
+    }
+
+    const plyPositions = new Float32Array(createQuadPositions(plyVertices[0]).flat());
+    const plyColors = new Float32Array(createQuadColors(plyVertices[0]).flat());
+    const plyIndices = new Uint32Array(createQuadIndices(plyVertices[0]));
+
+    // console.log(`plyPositions: ${plyPositions}`);
     indices = plyIndices;
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
     const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
