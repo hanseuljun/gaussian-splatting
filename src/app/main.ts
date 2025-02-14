@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import Camera from './camera';
 import readPlyFile from './ply';
 import shaderCode from './shader';
-import { CanvasInfo, createFloat32Buffer, createUint32Buffer } from './utils';
+import { CanvasInfo, createFloat32Buffer, createUint32Buffer, resizeToDisplaySize } from './utils';
 
 async function main(canvas: HTMLCanvasElement) {
   const adapter = await navigator.gpu.requestAdapter();
@@ -98,24 +98,6 @@ async function main(canvas: HTMLCanvasElement) {
     ],
   });
 
-  const renderPassDescriptor = {
-    colorAttachments: [
-      {
-        // view: undefined, // Assigned later
-        // resolveTarget: undefined, // Assigned Later
-        clearValue: [0.5, 0.5, 0.5, 1],
-        loadOp: 'clear',
-        storeOp: 'store',
-      },
-    ],
-    depthStencilAttachment: {
-      // view: undefined,  // Assigned later
-      depthClearValue: 1,
-      depthLoadOp: 'clear',
-      depthStoreOp: 'store',
-    },
-  };
-
   const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 10);
 
   let wPressed = false;
@@ -200,54 +182,8 @@ async function main(canvas: HTMLCanvasElement) {
 
   window.addEventListener('keydown', onkeydown);
   window.addEventListener('keyup', onkeyup);
-  function resizeToDisplaySize(device: GPUDevice, canvasInfo: CanvasInfo) {
-    const {
-      canvas,
-      renderTarget,
-      presentationFormat,
-      depthTexture,
-      sampleCount,
-    } = canvasInfo;
-    const width = Math.max(1, Math.min(device.limits.maxTextureDimension2D, canvas.clientWidth));
-    const height = Math.max(1, Math.min(device.limits.maxTextureDimension2D, canvas.clientHeight));
 
-    const needResize = !canvasInfo.renderTarget ||
-                       width !== canvas.width ||
-                       height !== canvas.height;
-    if (needResize) {
-      if (renderTarget) {
-        renderTarget.destroy();
-      }
-      if (depthTexture) {
-        depthTexture.destroy();
-      }
-
-      canvas.width = width;
-      canvas.height = height;
-
-      if (sampleCount > 1) {
-        const newRenderTarget = device.createTexture({
-          size: [canvas.width, canvas.height],
-          format: presentationFormat,
-          sampleCount,
-          usage: GPUTextureUsage.RENDER_ATTACHMENT,
-        });
-        canvasInfo.renderTarget = newRenderTarget;
-        canvasInfo.renderTargetView = newRenderTarget.createView();
-      }
-
-      const newDepthTexture = device.createTexture({
-        size: [canvas.width, canvas.height],
-        format: 'depth24plus',
-        sampleCount,
-        usage: GPUTextureUsage.RENDER_ATTACHMENT,
-      });
-      canvasInfo.depthTexture = newDepthTexture;
-      canvasInfo.depthTextureView = newDepthTexture.createView();
-    }
-    return needResize;
-  }
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function render(time: number) {
     if (!context) {
       fail('need a browser that supports WebGPU');
@@ -285,14 +221,40 @@ async function main(canvas: HTMLCanvasElement) {
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 
+    let colorView = null;
+    let colorResolveTarget = undefined; 
     if (canvasInfo.sampleCount === 1) {
         const colorTexture = context.getCurrentTexture();
-        renderPassDescriptor.colorAttachments[0].view = colorTexture.createView();
+        colorView = colorTexture.createView();
     } else {
-      renderPassDescriptor.colorAttachments[0].view = canvasInfo.renderTargetView;
-      renderPassDescriptor.colorAttachments[0].resolveTarget = context.getCurrentTexture().createView();
+      colorView = canvasInfo.renderTargetView;
+      colorResolveTarget = context.getCurrentTexture().createView();
     }
-    renderPassDescriptor.depthStencilAttachment.view = canvasInfo.depthTextureView;
+    if (!colorView) {
+      fail("colorView is null");
+      return;
+    }
+    if (!canvasInfo.depthTextureView) {
+      fail("canvasInfo.depthTextureView is null");
+      return;
+    }
+    const renderPassDescriptor: GPURenderPassDescriptor = {
+      colorAttachments: [
+        {
+          view: colorView, // Assigned later
+          resolveTarget: colorResolveTarget, // Assigned Later
+          clearValue: [0.5, 0.5, 0.5, 1],
+          loadOp: 'clear',
+          storeOp: 'store',
+        },
+      ],
+      depthStencilAttachment: {
+        view: canvasInfo.depthTextureView,
+        depthClearValue: 1,
+        depthLoadOp: 'clear',
+        depthStoreOp: 'store',
+      },
+    };
 
     const commandEncoder = device.createCommandEncoder();
     const passEncoder = commandEncoder.beginRenderPass(renderPassDescriptor);
@@ -318,10 +280,10 @@ async function main(canvas: HTMLCanvasElement) {
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
 
-    function createQuadPositions(plyVerticesSlice) {
+    function createQuadPositions() {
       const size = 0.01;
       const positions = [];
-      for (const v of plyVerticesSlice) {
+      for (const v of plyVertices) {
         const x = v.x;
         const y = v.y;
         const z = v.z;
@@ -333,9 +295,9 @@ async function main(canvas: HTMLCanvasElement) {
       return positions;
     }
 
-    function createQuadColors(plyVerticesSlice) {
+    function createQuadColors() {
       const colors = [];
-      for (const v of plyVerticesSlice) {
+      for (const v of plyVertices) {
         const r = v.f_dc_0;
         const g = v.f_dc_1;
         const b = v.f_dc_2;
@@ -347,10 +309,9 @@ async function main(canvas: HTMLCanvasElement) {
       return colors;
     }
 
-    function createQuadIndices(plyVerticesSlice) {
+    function createQuadIndices() {
       const indices = [];
-      // for (const v of plyVerticesSlice){
-      for (let i = 0; i < plyVerticesSlice.length; i++) {
+      for (let i = 0; i < plyVertices.length; i++) {
         const offset = i * 4;
         indices.push([0, 1, 2, 0, 2, 3].map((index) => index + offset));
       }
@@ -359,9 +320,9 @@ async function main(canvas: HTMLCanvasElement) {
 
     console.log(`plyVertices.length: ${plyVertices.length}`);
 
-    const plyPositions = new Float32Array(createQuadPositions(plyVertices.slice(0, 10000)).flat());
-    const plyColors = new Float32Array(createQuadColors(plyVertices.slice(0, 10000)).flat());
-    const plyIndices = new Uint32Array(createQuadIndices(plyVertices.slice(0, 10000)).flat());
+    const plyPositions = new Float32Array(createQuadPositions().flat());
+    const plyColors = new Float32Array(createQuadColors().flat());
+    const plyIndices = new Uint32Array(createQuadIndices().flat());
 
     // console.log(`plyPositions: ${plyPositions}`);
     indices = plyIndices;
