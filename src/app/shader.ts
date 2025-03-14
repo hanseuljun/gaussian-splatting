@@ -1,6 +1,7 @@
 const shaderCode = `
 struct VSUniforms {
-  mvp: mat4x4f,
+  modelView: mat4x4f,
+  projection: mat4x4f,
 };
 @group(0) @binding(0) var<uniform> vsUniforms: VSUniforms;
 
@@ -17,7 +18,7 @@ struct MyVSOutput {
 @vertex
 fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var vsOut: MyVSOutput;
-  vsOut.position = vsUniforms.mvp * v.position;
+  vsOut.position = vsUniforms.projection * vsUniforms.modelView * v.position;
   vsOut.color = v.color;
   return vsOut;
 }

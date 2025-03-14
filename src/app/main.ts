@@ -101,8 +101,9 @@ async function main(canvas: HTMLCanvasElement) {
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const vsUniformValues = new Float32Array(16); // 1 mat4
-  const mvp = vsUniformValues.subarray(0, 16);
+  const vsUniformValues = new Float32Array(32); // 2 mat4s
+  const modelViewValues = vsUniformValues.subarray(0, 16);
+  const projectionValues = vsUniformValues.subarray(16, 32);
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
@@ -227,9 +228,12 @@ async function main(canvas: HTMLCanvasElement) {
       dy -= 0.03;
     }
     camera.move(dx, dy, dz);
-    const viewProjection = camera.getViewProjection();
+
+    const view = camera.getView();
     const model = new THREE.Matrix4().identity();
-    viewProjection.multiply(model).toArray(mvp);
+    const projection = camera.getProjection();
+    view.multiply(model).toArray(modelViewValues);
+    projection.toArray(projectionValues);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 

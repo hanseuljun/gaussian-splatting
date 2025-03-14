@@ -18,14 +18,16 @@ class Camera {
     this.rotation = new THREE.Quaternion(0, 0, 0, 1);
   }
 
-  getViewProjection(): THREE.Matrix4 {
-    const camera = new THREE.PerspectiveCamera(this.fov, this.aspectRatio, this.near, this.far);
-    const projection = camera.projectionMatrix;
+  getView(): THREE.Matrix4 {
     const translationMatrix = new THREE.Matrix4().makeTranslation(this.position);
     const rotationMatrix = new THREE.Matrix4().makeRotationFromQuaternion(this.rotation);
     const view = translationMatrix.multiply(rotationMatrix).invert();
-    const viewProjection = projection.multiply(view);
-    return viewProjection;
+    return view;
+  }
+
+  getProjection(): THREE.Matrix4 {
+    const camera = new THREE.PerspectiveCamera(this.fov, this.aspectRatio, this.near, this.far);
+    return camera.projectionMatrix;
   }
 
   move(dx: number, dy: number, dz: number) {
