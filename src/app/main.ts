@@ -43,11 +43,18 @@ async function main(canvas: HTMLCanvasElement) {
             {shaderLocation: 0, offset: 0, format: 'float32x3'},
           ],
         },
+        // normals
+        {
+          arrayStride: 3 * 4, // 3 floats, 4 bytes each
+          attributes: [
+            {shaderLocation: 1, offset: 0, format: 'float32x3'},
+          ],
+        },
         // colors
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 1, offset: 0, format: 'float32x4'},
+            {shaderLocation: 2, offset: 0, format: 'float32x4'},
           ],
         },
       ],
@@ -86,11 +93,59 @@ async function main(canvas: HTMLCanvasElement) {
     }),
   });
 
-  const positions = new Float32Array([1, 1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1, -1, 1, -1, 1, 1, 1, 1, 1, 1, 1, -1, -1, 1, -1, -1, -1, -1, 1, -1, -1, 1, -1, 1, -1, -1, 1, 1, 1, 1, -1, 1, 1, -1, -1, 1, 1, -1, 1, -1, 1, -1, 1, 1, -1, 1, -1, -1, -1, -1, -1]);
+  const positions = new Float32Array([1, 1, -1,
+                                      1, 1, 1,
+                                      1, -1, 1,
+                                      1, -1, -1,
+                                      -1, 1, 1,
+                                      -1, 1, -1,
+                                      -1, -1, -1,
+                                      -1, -1, 1,
+                                      -1, 1, 1,
+                                      1, 1, 1,
+                                      1, 1, -1,
+                                      -1, 1, -1,
+                                      -1, -1, -1,
+                                      1, -1, -1,
+                                      1, -1, 1,
+                                      -1, -1, 1,
+                                      1, 1, 1,
+                                      -1, 1, 1,
+                                      -1, -1, 1,
+                                      1, -1, 1,
+                                      -1, 1, -1,
+                                      1, 1, -1,
+                                      1, -1, -1,
+                                      -1, -1, -1]);
+  const normals = new Float32Array([1, 0, 0,
+                                    1, 0, 0,
+                                    1, 0, 0,
+                                    1, 0, 0,
+                                    -1, 0, 0,
+                                    -1, 0, 0,
+                                    -1, 0, 0,
+                                    -1, 0, 0,
+                                    0, 1, 0,
+                                    0, 1, 0,
+                                    0, 1, 0,
+                                    0, 1, 0,
+                                    0, -1, 0,
+                                    0, -1, 0,
+                                    0, -1, 0,
+                                    0, -1, 0,
+                                    0, 0, 1,
+                                    0, 0, 1,
+                                    0, 0, 1,
+                                    0, 0, 1,
+                                    0, 0, -1,
+                                    0, 0, -1,
+                                    0, 0, -1,
+                                    0, 0, -1]);
   const colors = new Float32Array([1, 0.5, 0.5, 1.0, 0.5, 0.5, 1, 1.0, 0.5, 0.5, 1, 1.0, 0.5, 0.5, 1, 1.0, 0, 0.5, 0.5, 1.0, 0, 0.5, 0.5, 1.0, 0, 0.5, 0.5, 1.0, 0, 0.5, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 1, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 0, 0.5, 1.0, 0.5, 0, 0.5, 1.0]);
   let indices = new Uint32Array([0, 1, 2, 0, 2, 3, 4, 5, 6, 4, 6, 7, 8, 9, 10, 8, 10, 11, 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23]);
 
   let positionBuffer = createFloat32Buffer(device, positions, GPUBufferUsage.VERTEX);
+  let normalBuffer = createFloat32Buffer(device, normals, GPUBufferUsage.VERTEX);
   let colorBuffer = createFloat32Buffer(device, colors, GPUBufferUsage.VERTEX);
   let indicesBuffer = createUint32Buffer(device, indices, GPUBufferUsage.INDEX);
 
@@ -277,7 +332,8 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, positionBuffer);
-    passEncoder.setVertexBuffer(1, colorBuffer);
+    passEncoder.setVertexBuffer(1, normalBuffer);
+    passEncoder.setVertexBuffer(2, colorBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indices.length);
     passEncoder.end();
@@ -305,6 +361,19 @@ async function main(canvas: HTMLCanvasElement) {
       positions.push([x + v3.x, y + v3.y, z + v3.z]);
     }
     return positions;
+  }
+
+  function createQuadNormals(plyVertices: {[key:string]: number}[]) {
+    const normals = [];
+    for (const v of plyVertices) {
+      const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
+      const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation);
+      normals.push(normal.toArray());
+      normals.push(normal.toArray());
+      normals.push(normal.toArray());
+      normals.push(normal.toArray());
+    }
+    return normals;
   }
 
   function createQuadColors(plyVertices: {[key:string]: number}[]) {
@@ -348,6 +417,7 @@ async function main(canvas: HTMLCanvasElement) {
     console.log(`quadColors: ${quadColors.slice(0, 10)}`);
 
     const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
+    const plyNormals = new Float32Array(createQuadNormals(plyVertices).flat());
     const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices).flat());
 
@@ -355,9 +425,11 @@ async function main(canvas: HTMLCanvasElement) {
     // console.log(`plyPositions: ${plyPositions}`);
     indices = plyIndices;
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
+    const plyNormalBuffer = createFloat32Buffer(device, plyNormals, GPUBufferUsage.VERTEX);
     const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
     positionBuffer = plyPositionBuffer;
+    normalBuffer = plyNormalBuffer;
     colorBuffer = plyColorBuffer;
     indicesBuffer = plyIndicesBuffer;
   }
