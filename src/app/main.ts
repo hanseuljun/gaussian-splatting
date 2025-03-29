@@ -167,7 +167,8 @@ async function main(canvas: HTMLCanvasElement) {
     ],
   });
 
-  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  // const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 10);
 
   let wPressed = false;
   let sPressed = false;
@@ -344,17 +345,18 @@ async function main(canvas: HTMLCanvasElement) {
   requestAnimationFrame(render);
 
   function createQuadPositions(plyVertices: {[key:string]: number}[]) {
-    const size = 0.01;
     const positions = [];
     for (const v of plyVertices) {
       const x = v.x;
       const y = v.y;
       const z = v.z;
       const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
-      const v0 = new THREE.Vector3(size, size, 0).applyQuaternion(rotation);
-      const v1 = new THREE.Vector3(-size, size, 0).applyQuaternion(rotation);
-      const v2 = new THREE.Vector3(-size, -size, 0).applyQuaternion(rotation);
-      const v3 = new THREE.Vector3(size, -size, 0).applyQuaternion(rotation);
+      const width = Math.exp(v.scale_0);
+      const height = Math.exp(v.scale_1);
+      const v0 = new THREE.Vector3(width, height, 0).applyQuaternion(rotation);
+      const v1 = new THREE.Vector3(-width, height, 0).applyQuaternion(rotation);
+      const v2 = new THREE.Vector3(-width, -height, 0).applyQuaternion(rotation);
+      const v3 = new THREE.Vector3(width, -height, 0).applyQuaternion(rotation);
       positions.push([x + v0.x, y + v0.y, z + v0.z]);
       positions.push([x + v1.x, y + v1.y, z + v1.z]);
       positions.push([x + v2.x, y + v2.y, z + v2.z]);
@@ -403,14 +405,14 @@ async function main(canvas: HTMLCanvasElement) {
 
   async function loadGaussianSplatPly() {
     const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    // let plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
     if (!plyVertices) {
       fail('Failed to load PLY file');
       return;
     }
+    // plyVertices = plyVertices.slice(0, 20000);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
-
-
     console.log(`plyVertices.length: ${plyVertices.length}`);
 
     const quadColors = createQuadColors(plyVertices);
@@ -420,7 +422,6 @@ async function main(canvas: HTMLCanvasElement) {
     const plyNormals = new Float32Array(createQuadNormals(plyVertices).flat());
     const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices).flat());
-
 
     // console.log(`plyPositions: ${plyPositions}`);
     indices = plyIndices;
@@ -436,7 +437,6 @@ async function main(canvas: HTMLCanvasElement) {
 
   loadGaussianSplatPly();
 }
-
 
 function fail(msg: string) {
   alert(`failed: ${msg}`);

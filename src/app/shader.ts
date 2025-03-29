@@ -26,9 +26,7 @@ fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var dir = normalize(vsUniforms.modelView * v.position);
   var diffuse = max(0.0, dot(normal.xyz, -dir.xyz));
   vsOut.color = vec4f(v.color.rgb, v.color.a * diffuse);
-  // vsOut.color = vec4f(diffuse, diffuse, diffuse, 1.0);
-  // vsOut.color = vec4f(normal.x * 0.5 + 0.5, normal.y * 0.5 + 0.5, normal.z * 0.5 + 0.5, 1.0);
-  // vsOut.color = vec4f(v.normal.x * 0.5 + 0.5, v.normal.y * 0.5 + 0.5, v.normal.z * 0.5 + 0.5, 1.0);
+  // vsOut.color = vec4f(v.color.rgb, v.color.a);
   return vsOut;
 }
 
