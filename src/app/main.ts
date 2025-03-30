@@ -43,25 +43,25 @@ async function main(canvas: HTMLCanvasElement) {
             {shaderLocation: 0, offset: 0, format: 'float32x3'},
           ],
         },
-        // colors
+        // rotations
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
             {shaderLocation: 1, offset: 0, format: 'float32x4'},
           ],
         },
-        // rotations
-        {
-          arrayStride: 4 * 4, // 4 floats, 4 bytes each
-          attributes: [
-            {shaderLocation: 2, offset: 0, format: 'float32x4'},
-          ],
-        },
         // scales
         {
           arrayStride: 4 * 3, // 3 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 3, offset: 0, format: 'float32x3'},
+            {shaderLocation: 2, offset: 0, format: 'float32x3'},
+          ],
+        },
+        // colors
+        {
+          arrayStride: 4 * 4, // 4 floats, 4 bytes each
+          attributes: [
+            {shaderLocation: 3, offset: 0, format: 'float32x4'},
           ],
         },
       ],
@@ -101,9 +101,9 @@ async function main(canvas: HTMLCanvasElement) {
   });
 
   let positionBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
-  let colorBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let rotationBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let scaleBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
+  let colorBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let indicesBuffer = createUint32Buffer(device, new Uint32Array([]), GPUBufferUsage.INDEX);
   let indexCount = 0;
 
@@ -291,9 +291,9 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, positionBuffer);
-    passEncoder.setVertexBuffer(1, colorBuffer);
-    passEncoder.setVertexBuffer(2, rotationBuffer);
-    passEncoder.setVertexBuffer(3, scaleBuffer);
+    passEncoder.setVertexBuffer(1, rotationBuffer);
+    passEncoder.setVertexBuffer(2, scaleBuffer);
+    passEncoder.setVertexBuffer(3, colorBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indexCount);
     passEncoder.end();
@@ -312,22 +312,6 @@ async function main(canvas: HTMLCanvasElement) {
       positions.push([v.x, v.y, v.z]);
     }
     return positions;
-  }
-
-  function createQuadColors(plyVertices: {[key:string]: number}[]) {
-    const colors = [];
-    for (const v of plyVertices) {
-      const SH_C0 = 0.28209479177387814;
-      const r = 0.5 + SH_C0 * v.f_dc_0;
-      const g = 0.5 + SH_C0 * v.f_dc_1;
-      const b = 0.5 + SH_C0 * v.f_dc_2;
-      const a = 1.0 / (1.0 + Math.exp(-v.opacity));
-      colors.push([r, g, b, a]);
-      colors.push([r, g, b, a]);
-      colors.push([r, g, b, a]);
-      colors.push([r, g, b, a]);
-    }
-    return colors;
   }
 
   function createQuadRotations(plyVertices: {[key:string]: number}[]) {
@@ -354,6 +338,22 @@ async function main(canvas: HTMLCanvasElement) {
     return offsets;
   }
 
+  function createQuadColors(plyVertices: {[key:string]: number}[]) {
+    const colors = [];
+    for (const v of plyVertices) {
+      const SH_C0 = 0.28209479177387814;
+      const r = 0.5 + SH_C0 * v.f_dc_0;
+      const g = 0.5 + SH_C0 * v.f_dc_1;
+      const b = 0.5 + SH_C0 * v.f_dc_2;
+      const a = 1.0 / (1.0 + Math.exp(-v.opacity));
+      colors.push([r, g, b, a]);
+      colors.push([r, g, b, a]);
+      colors.push([r, g, b, a]);
+      colors.push([r, g, b, a]);
+    }
+    return colors;
+  }
+
   function createQuadIndices(plyVertices: {[key:string]: number}[]) {
     const indices = [];
     for (let i = 0; i < plyVertices.length; i++) {
@@ -370,7 +370,7 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    plyVertices = plyVertices.splice(0, 200000);
+    // plyVertices = plyVertices.splice(0, 200000);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);
@@ -379,21 +379,21 @@ async function main(canvas: HTMLCanvasElement) {
     console.log(`quadColors: ${quadColors.slice(0, 10)}`);
 
     const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
-    const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
     const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
+    const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices).flat());
 
     // console.log(`plyPositions: ${plyPositions}`);
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
-    const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
     const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
+    const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
     positionBuffer = plyPositionBuffer;
-    colorBuffer = plyColorBuffer;
     rotationBuffer = plyRotationBuffer;
     scaleBuffer = plyScaleBuffer;
+    colorBuffer = plyColorBuffer;
     indicesBuffer = plyIndicesBuffer;
     indexCount = plyIndices.length;
   }

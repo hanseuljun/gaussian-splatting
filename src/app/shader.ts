@@ -7,9 +7,9 @@ struct VSUniforms {
 
 struct MyVSInput {
     @location(0) position: vec3f,
-    @location(1) color: vec4f,
-    @location(2) rotation: vec4f,
-    @location(3) scale: vec2f,
+    @location(1) rotation: vec4f,
+    @location(2) scale: vec2f,
+    @location(3) color: vec4f,
 };
 
 struct MyVSOutput {
