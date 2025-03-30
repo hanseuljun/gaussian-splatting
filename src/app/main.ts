@@ -349,14 +349,14 @@ async function main(canvas: HTMLCanvasElement) {
   }
 
   function createQuadUvs(plyVertices: {[key:string]: number}[]) {
-    const offsets = [];
+    const uvs = [];
     for (const v of plyVertices) {
-      offsets.push([1.0, 1.0]);
-      offsets.push([-1.0, 1.0]);
-      offsets.push([-1.0, -1.0]);
-      offsets.push([1.0, -1.0]);
+      uvs.push([ 4.0,  4.0]);
+      uvs.push([-4.0,  4.0]);
+      uvs.push([-4.0, -4.0]);
+      uvs.push([ 4.0, -4.0]);
     }
-    return offsets;
+    return uvs;
   }
 
   function createQuadColors(plyVertices: {[key:string]: number}[]) {
@@ -391,7 +391,7 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    // plyVertices = plyVertices.splice(0, 200000);
+    plyVertices = plyVertices.splice(100000, 10);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);

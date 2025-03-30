@@ -15,7 +15,8 @@ struct MyVSInput {
 
 struct MyVSOutput {
   @builtin(position) position: vec4f,
-  @location(0) color: vec4f,
+  @location(0) uv: vec2f,
+  @location(1) color: vec4f,
 };
 
 fn product(q1: vec4f, q2: vec4f) -> vec4f {
@@ -46,13 +47,20 @@ fn myVSMain(v: MyVSInput) -> MyVSOutput {
   // var dir = normalize(vsUniforms.modelView * vec4f(position, 1.0));
   // var diffuse = max(0.0, dot(normal.xyz, -dir.xyz));
   // vsOut.color = vec4f(v.color.rgb, v.color.a * diffuse);
-  vsOut.color = vec4f(v.color.rgb, v.color.a);
+  // vsOut.color = vec4f(v.color.rgb, v.color.a);
+  vsOut.uv = v.uv;
+  vsOut.color = v.color;
   return vsOut;
+}
+
+fn normal(uv: vec2f) -> f32 {
+  return exp((-uv.x * uv.x - uv.y * uv.y) / 2.0);
 }
 
 @fragment
 fn myFSMain(v: MyVSOutput) -> @location(0) vec4f {
-  return vec4f(v.color.rgb * v.color.a, v.color.a);
+  var alpha = normal(v.uv) * v.color.a;
+  return vec4f(v.color.rgb * alpha, alpha);
 }
 `;
 
