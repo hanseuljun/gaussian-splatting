@@ -43,32 +43,25 @@ async function main(canvas: HTMLCanvasElement) {
             {shaderLocation: 0, offset: 0, format: 'float32x3'},
           ],
         },
-        // normals
-        {
-          arrayStride: 3 * 4, // 3 floats, 4 bytes each
-          attributes: [
-            {shaderLocation: 1, offset: 0, format: 'float32x3'},
-          ],
-        },
         // colors
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 2, offset: 0, format: 'float32x4'},
+            {shaderLocation: 1, offset: 0, format: 'float32x4'},
           ],
         },
         // rotations
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 3, offset: 0, format: 'float32x4'},
+            {shaderLocation: 2, offset: 0, format: 'float32x4'},
           ],
         },
-        // offsets
+        // scales
         {
-          arrayStride: 4 * 2, // 4 floats, 4 bytes each
+          arrayStride: 4 * 3, // 3 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 4, offset: 0, format: 'float32x2'},
+            {shaderLocation: 3, offset: 0, format: 'float32x3'},
           ],
         },
       ],
@@ -108,10 +101,9 @@ async function main(canvas: HTMLCanvasElement) {
   });
 
   let positionBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
-  let normalBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let colorBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let rotationBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
-  let offsetBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
+  let scaleBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let indicesBuffer = createUint32Buffer(device, new Uint32Array([]), GPUBufferUsage.INDEX);
   let indexCount = 0;
 
@@ -299,10 +291,9 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, positionBuffer);
-    passEncoder.setVertexBuffer(1, normalBuffer);
-    passEncoder.setVertexBuffer(2, colorBuffer);
-    passEncoder.setVertexBuffer(3, rotationBuffer);
-    passEncoder.setVertexBuffer(4, offsetBuffer);
+    passEncoder.setVertexBuffer(1, colorBuffer);
+    passEncoder.setVertexBuffer(2, rotationBuffer);
+    passEncoder.setVertexBuffer(3, scaleBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indexCount);
     passEncoder.end();
@@ -315,39 +306,12 @@ async function main(canvas: HTMLCanvasElement) {
   function createQuadPositions(plyVertices: {[key:string]: number}[]) {
     const positions = [];
     for (const v of plyVertices) {
-      // const x = v.x;
-      // const y = v.y;
-      // const z = v.z;
-      // const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
-      // const width = Math.exp(v.scale_0);
-      // const height = Math.exp(v.scale_1);
-      // const v0 = new THREE.Vector3(width, height, 0).applyQuaternion(rotation);
-      // const v1 = new THREE.Vector3(-width, height, 0).applyQuaternion(rotation);
-      // const v2 = new THREE.Vector3(-width, -height, 0).applyQuaternion(rotation);
-      // const v3 = new THREE.Vector3(width, -height, 0).applyQuaternion(rotation);
-      // positions.push([x + v0.x, y + v0.y, z + v0.z]);
-      // positions.push([x + v1.x, y + v1.y, z + v1.z]);
-      // positions.push([x + v2.x, y + v2.y, z + v2.z]);
-      // positions.push([x + v3.x, y + v3.y, z + v3.z]);
       positions.push([v.x, v.y, v.z]);
       positions.push([v.x, v.y, v.z]);
       positions.push([v.x, v.y, v.z]);
       positions.push([v.x, v.y, v.z]);
     }
     return positions;
-  }
-
-  function createQuadNormals(plyVertices: {[key:string]: number}[]) {
-    const normals = [];
-    for (const v of plyVertices) {
-      const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
-      const normal = new THREE.Vector3(0, 0, 1).applyQuaternion(rotation);
-      normals.push(normal.toArray());
-      normals.push(normal.toArray());
-      normals.push(normal.toArray());
-      normals.push(normal.toArray());
-    }
-    return normals;
   }
 
   function createQuadColors(plyVertices: {[key:string]: number}[]) {
@@ -369,36 +333,23 @@ async function main(canvas: HTMLCanvasElement) {
   function createQuadRotations(plyVertices: {[key:string]: number}[]) {
     const rotations = [];
     for (const v of plyVertices) {
-      // const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
-      // rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      // rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      // rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      // rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_0, v.rot_1, v.rot_2, v.rot_3]);
-      rotations.push([v.rot_0, v.rot_1, v.rot_2, v.rot_3]);
-      rotations.push([v.rot_0, v.rot_1, v.rot_2, v.rot_3]);
-      rotations.push([v.rot_0, v.rot_1, v.rot_2, v.rot_3]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
     }
     return rotations;
   }
 
-  function createQuadOffsets(plyVertices: {[key:string]: number}[]) {
+  function createQuadScales(plyVertices: {[key:string]: number}[]) {
     const offsets = [];
     for (const v of plyVertices) {
       const width = Math.exp(v.scale_0);
       const height = Math.exp(v.scale_1);
-      // const v0 = new THREE.Vector3(width, height, 0);
-      // const v1 = new THREE.Vector3(-width, height, 0);
-      // const v2 = new THREE.Vector3(-width, -height, 0);
-      // const v3 = new THREE.Vector3(width, -height, 0);
-      // offsets.push(v0.toArray());
-      // offsets.push(v1.toArray());
-      // offsets.push(v2.toArray());
-      // offsets.push(v3.toArray());
-      offsets.push([width, height]);
-      offsets.push([-width, height]);
-      offsets.push([-width, -height]);
-      offsets.push([width, -height]);
+      offsets.push([width, height, 0]);
+      offsets.push([-width, height, 0]);
+      offsets.push([-width, -height, 0]);
+      offsets.push([width, -height, 0]);
     }
     return offsets;
   }
@@ -419,7 +370,7 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    plyVertices = plyVertices.splice(0, 10000);
+    plyVertices = plyVertices.splice(0, 200000);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);
@@ -428,24 +379,21 @@ async function main(canvas: HTMLCanvasElement) {
     console.log(`quadColors: ${quadColors.slice(0, 10)}`);
 
     const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
-    const plyNormals = new Float32Array(createQuadNormals(plyVertices).flat());
     const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
-    const plyOffsets = new Float32Array(createQuadOffsets(plyVertices).flat());
+    const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices).flat());
 
     // console.log(`plyPositions: ${plyPositions}`);
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
-    const plyNormalBuffer = createFloat32Buffer(device, plyNormals, GPUBufferUsage.VERTEX);
     const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
-    const plyOffsetBuffer = createFloat32Buffer(device, plyOffsets, GPUBufferUsage.VERTEX);
+    const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
     const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
     positionBuffer = plyPositionBuffer;
-    normalBuffer = plyNormalBuffer;
     colorBuffer = plyColorBuffer;
     rotationBuffer = plyRotationBuffer;
-    offsetBuffer = plyOffsetBuffer;
+    scaleBuffer = plyScaleBuffer;
     indicesBuffer = plyIndicesBuffer;
     indexCount = plyIndices.length;
   }
