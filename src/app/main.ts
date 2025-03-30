@@ -57,11 +57,18 @@ async function main(canvas: HTMLCanvasElement) {
             {shaderLocation: 2, offset: 0, format: 'float32x3'},
           ],
         },
+        // uvs
+        {
+          arrayStride: 4 * 2, // 2 floats, 4 bytes each
+          attributes: [
+            {shaderLocation: 3, offset: 0, format: 'float32x2'},
+          ],
+        },
         // colors
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 3, offset: 0, format: 'float32x4'},
+            {shaderLocation: 4, offset: 0, format: 'float32x4'},
           ],
         },
       ],
@@ -103,6 +110,7 @@ async function main(canvas: HTMLCanvasElement) {
   let positionBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let rotationBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let scaleBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
+  let uvBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let colorBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let indicesBuffer = createUint32Buffer(device, new Uint32Array([]), GPUBufferUsage.INDEX);
   let indexCount = 0;
@@ -293,7 +301,8 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setVertexBuffer(0, positionBuffer);
     passEncoder.setVertexBuffer(1, rotationBuffer);
     passEncoder.setVertexBuffer(2, scaleBuffer);
-    passEncoder.setVertexBuffer(3, colorBuffer);
+    passEncoder.setVertexBuffer(3, uvBuffer);
+    passEncoder.setVertexBuffer(4, colorBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indexCount);
     passEncoder.end();
@@ -328,12 +337,24 @@ async function main(canvas: HTMLCanvasElement) {
   function createQuadScales(plyVertices: {[key:string]: number}[]) {
     const offsets = [];
     for (const v of plyVertices) {
-      const width = Math.exp(v.scale_0);
-      const height = Math.exp(v.scale_1);
-      offsets.push([width, height, 0]);
-      offsets.push([-width, height, 0]);
-      offsets.push([-width, -height, 0]);
-      offsets.push([width, -height, 0]);
+      const x = Math.exp(v.scale_0);
+      const y = Math.exp(v.scale_1);
+      const z = Math.exp(v.scale_2);
+      offsets.push([x, y, z]);
+      offsets.push([x, y, z]);
+      offsets.push([x, y, z]);
+      offsets.push([x, y, z]);
+    }
+    return offsets;
+  }
+
+  function createQuadUvs(plyVertices: {[key:string]: number}[]) {
+    const offsets = [];
+    for (const v of plyVertices) {
+      offsets.push([1.0, 1.0]);
+      offsets.push([-1.0, 1.0]);
+      offsets.push([-1.0, -1.0]);
+      offsets.push([1.0, -1.0]);
     }
     return offsets;
   }
@@ -381,6 +402,7 @@ async function main(canvas: HTMLCanvasElement) {
     const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
     const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
     const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
+    const plyUvs = new Float32Array(createQuadUvs(plyVertices).flat());
     const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices).flat());
 
@@ -388,11 +410,13 @@ async function main(canvas: HTMLCanvasElement) {
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
     const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
     const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
+    const plyUvBuffer = createFloat32Buffer(device, plyUvs, GPUBufferUsage.VERTEX);
     const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
     positionBuffer = plyPositionBuffer;
     rotationBuffer = plyRotationBuffer;
     scaleBuffer = plyScaleBuffer;
+    uvBuffer = plyUvBuffer;
     colorBuffer = plyColorBuffer;
     indicesBuffer = plyIndicesBuffer;
     indexCount = plyIndices.length;

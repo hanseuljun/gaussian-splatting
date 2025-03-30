@@ -9,7 +9,8 @@ struct MyVSInput {
     @location(0) position: vec3f,
     @location(1) rotation: vec4f,
     @location(2) scale: vec2f,
-    @location(3) color: vec4f,
+    @location(3) uv: vec2f,
+    @location(4) color: vec4f,
 };
 
 struct MyVSOutput {
@@ -36,7 +37,8 @@ fn rotate(v: vec3f, q: vec4f) -> vec3f {
 @vertex
 fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var vsOut: MyVSOutput;
-  var position = v.position + rotate(vec3f(v.scale.xy, 0.0), v.rotation);
+  var offset = vec2f(v.scale.x * v.uv.x, v.scale.y * v.uv.y);
+  var position = v.position + rotate(vec3f(offset, 0.0), v.rotation);
   vsOut.position = vsUniforms.projection * vsUniforms.modelView * vec4f(position, 1.0);
   // Normal of the vertex in camera space.
   // var normal = vsUniforms.modelView * vec4f(v.normal.xyz, 0.0);
