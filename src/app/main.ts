@@ -391,7 +391,31 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    plyVertices = plyVertices.splice(100000, 10);
+    // plyVertices = plyVertices.splice(100000, 10);
+    plyVertices = plyVertices.splice(0, 100000);
+
+    function getSortedVertices(plyVertices: {[key:string]: number}[]) {
+      class VertexWithPosition {
+        plyVertex: {[key:string]: number};
+        position: THREE.Vector3;
+
+        constructor(plyVertex: {[key:string]: number}, position: THREE.Vector3) {
+          this.plyVertex = plyVertex;
+          this.position = position;
+        }
+      }
+
+      const verticesWithPositions: VertexWithPosition[] = [];
+      for (const v of plyVertices) {
+        const vertexWithPosition = new VertexWithPosition(v, new THREE.Vector3(v.x, v.y, v.z));
+        verticesWithPositions.push(vertexWithPosition);
+      }
+
+      verticesWithPositions.sort((a, b) => a.position.z - b.position.z);
+      return verticesWithPositions.map(v => v.plyVertex);
+    }
+
+    plyVertices = getSortedVertices(plyVertices);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);

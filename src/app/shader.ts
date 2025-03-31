@@ -60,6 +60,7 @@ fn normal(uv: vec2f) -> f32 {
 @fragment
 fn myFSMain(v: MyVSOutput) -> @location(0) vec4f {
   var alpha = normal(v.uv) * v.color.a;
+  // var alpha = v.color.a;
   return vec4f(v.color.rgb * alpha, alpha);
 }
 `;
