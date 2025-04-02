@@ -18,10 +18,15 @@ class Camera {
     this.rotation = new THREE.Quaternion(0, 0, 0, 1);
   }
 
-  getView(): THREE.Matrix4 {
+  getModel(): THREE.Matrix4 {
     const translationMatrix = new THREE.Matrix4().makeTranslation(this.position);
     const rotationMatrix = new THREE.Matrix4().makeRotationFromQuaternion(this.rotation);
-    const view = translationMatrix.multiply(rotationMatrix).invert();
+    const model = translationMatrix.multiply(rotationMatrix);
+    return model;
+  }
+
+  getView(): THREE.Matrix4 {
+    const view = this.getModel().invert();
     return view;
   }
 

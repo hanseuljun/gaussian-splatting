@@ -2,6 +2,7 @@ const shaderCode = `
 struct VSUniforms {
   modelView: mat4x4f,
   projection: mat4x4f,
+  camera: mat4x4f,
 };
 @group(0) @binding(0) var<uniform> vsUniforms: VSUniforms;
 
@@ -38,8 +39,9 @@ fn rotate(v: vec3f, q: vec4f) -> vec3f {
 @vertex
 fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var vsOut: MyVSOutput;
-  var offset = vec2f(v.scale.x * v.uv.x, v.scale.y * v.uv.y);
-  var position = v.position + rotate(vec3f(offset, 0.0), v.rotation);
+  var offset = vec3f(v.scale.x * v.uv.x, v.scale.y * v.uv.y, 0.0);
+  // var position = v.position + rotate(vec3f(offset, 0.0), v.rotation);
+  var position = v.position + offset;
   vsOut.position = vsUniforms.projection * vsUniforms.modelView * vec4f(position, 1.0);
   // Normal of the vertex in camera space.
   // var normal = vsUniforms.modelView * vec4f(v.normal.xyz, 0.0);
@@ -60,7 +62,6 @@ fn normal(uv: vec2f) -> f32 {
 @fragment
 fn myFSMain(v: MyVSOutput) -> @location(0) vec4f {
   var alpha = normal(v.uv) * v.color.a;
-  // var alpha = v.color.a;
   return vec4f(v.color.rgb * alpha, alpha);
 }
 `;

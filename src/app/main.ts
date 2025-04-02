@@ -115,16 +115,17 @@ async function main(canvas: HTMLCanvasElement) {
   let indicesBuffer = createUint32Buffer(device, new Uint32Array([]), GPUBufferUsage.INDEX);
   let indexCount = 0;
 
-  const vUniformBufferSize = 2 * 16 * 4; // 2 mat4s * 16 floats per mat * 4 bytes per float
+  const vUniformBufferSize = 3 * 16 * 4; // 3 mat4s * 16 floats per mat * 4 bytes per float
 
   const vsUniformBuffer = device.createBuffer({
     size: Math.max(16, vUniformBufferSize),
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
-  const vsUniformValues = new Float32Array(32); // 2 mat4s
+  const vsUniformValues = new Float32Array(48); // 3 mat4s
   const modelViewValues = vsUniformValues.subarray(0, 16);
   const projectionValues = vsUniformValues.subarray(16, 32);
+  const cameraValues = vsUniformValues.subarray(32, 48);
 
   const bindGroup = device.createBindGroup({
     layout: pipeline.getBindGroupLayout(0),
@@ -256,6 +257,7 @@ async function main(canvas: HTMLCanvasElement) {
     const projection = camera.getProjection();
     view.multiply(model).toArray(modelViewValues);
     projection.toArray(projectionValues);
+    camera.getModel().toArray(cameraValues);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 
@@ -391,8 +393,8 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    // plyVertices = plyVertices.splice(100000, 10);
-    plyVertices = plyVertices.splice(0, 100000);
+    plyVertices = plyVertices.splice(100000, 1000);
+    // plyVertices = plyVertices.splice(0, 100000);
 
     function getSortedVertices(plyVertices: {[key:string]: number}[]) {
       class VertexWithPosition {
