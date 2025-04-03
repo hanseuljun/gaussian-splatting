@@ -378,11 +378,27 @@ async function main(canvas: HTMLCanvasElement) {
   }
 
   function createQuadIndices(plyVertices: {[key:string]: number}[]) {
-    const indices = [];
-    for (let i = 0; i < plyVertices.length; i++) {
-      indices.push(i);
+    class VertexForSort {
+      plyVertex: {[key:string]: number};
+      position: THREE.Vector3;
+      index: number;
+
+      constructor(plyVertex: {[key:string]: number}, position: THREE.Vector3, index: number) {
+        this.plyVertex = plyVertex;
+        this.position = position;
+        this.index = index;
+      }
     }
-    const glIndices = indices.map((index) => [
+
+    const verticesForSort: VertexForSort[] = [];
+    for (let i = 0; i < plyVertices.length; i++) {
+      const v = plyVertices[i];
+      const vertexForSort = new VertexForSort(v, new THREE.Vector3(v.x, v.y, v.z), i);
+      verticesForSort.push(vertexForSort);
+    }
+
+    verticesForSort.sort((a, b) => a.position.z - b.position.z);
+    const glIndices = verticesForSort.map(vertex => vertex.index).map((index) => [
       index * 4 + 0,
       index * 4 + 1,
       index * 4 + 2,
@@ -402,29 +418,6 @@ async function main(canvas: HTMLCanvasElement) {
     }
     plyVertices = plyVertices.splice(100000, 10000);
     // plyVertices = plyVertices.splice(0, 100000);
-
-    function getSortedVertices(plyVertices: {[key:string]: number}[]) {
-      class VertexWithPosition {
-        plyVertex: {[key:string]: number};
-        position: THREE.Vector3;
-
-        constructor(plyVertex: {[key:string]: number}, position: THREE.Vector3) {
-          this.plyVertex = plyVertex;
-          this.position = position;
-        }
-      }
-
-      const verticesWithPositions: VertexWithPosition[] = [];
-      for (const v of plyVertices) {
-        const vertexWithPosition = new VertexWithPosition(v, new THREE.Vector3(v.x, v.y, v.z));
-        verticesWithPositions.push(vertexWithPosition);
-      }
-
-      verticesWithPositions.sort((a, b) => a.position.z - b.position.z);
-      return verticesWithPositions.map(v => v.plyVertex);
-    }
-
-    plyVertices = getSortedVertices(plyVertices);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);
