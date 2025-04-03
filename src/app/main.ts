@@ -97,7 +97,8 @@ async function main(canvas: HTMLCanvasElement) {
     },
     depthStencil: {
       depthWriteEnabled: true,
-      depthCompare: 'less',
+      // depthCompare: 'less',
+      depthCompare: 'always',
       format: 'depth24plus',
     },
     ...(canvasInfo.sampleCount > 1 && {
@@ -328,7 +329,7 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    plyVertices = plyVertices.splice(0, 100000);
+    // plyVertices = plyVertices.splice(0, 100000);
     // plyVertices = plyVertices.splice(100000, 100);
     // plyVertices = plyVertices.splice(100000, 10000);
 
@@ -406,7 +407,7 @@ async function main(canvas: HTMLCanvasElement) {
 
     if (sortRequested) {
       if (plyVertices) {
-        const plyIndices = new Uint32Array(createQuadIndices(plyVertices, camera.getView()).flat());
+        const plyIndices = new Uint32Array(createQuadIndices(plyVertices, view).flat());
         const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
         indicesBuffer = plyIndicesBuffer;
         indexCount = plyIndices.length;

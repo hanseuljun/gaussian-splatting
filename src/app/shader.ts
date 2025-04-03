@@ -47,6 +47,7 @@ fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var cov = rotation * scale;
   var offset = cov * cameraUv;
   // var offset = cameraUv * 0.01;
+  // var offset = vec3f(cameraUv.x * 0.01, cameraUv.y * 0.03, cameraUv.z * 0.01);
   var position = v.position + offset;
   vsOut.position = vsUniforms.projection * vsUniforms.modelView * vec4f(position, 1.0);
   vsOut.uv = v.uv;
