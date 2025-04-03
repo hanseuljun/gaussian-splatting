@@ -143,6 +143,7 @@ async function main(canvas: HTMLCanvasElement) {
   let dPressed = false;
   let upPressed = false;
   let downPressed = false;
+  let sortRequested = false;
 
   function onkeydown(event: KeyboardEvent) {
     if (event.key === 'w') {
@@ -162,6 +163,9 @@ async function main(canvas: HTMLCanvasElement) {
     }
     if (event.key === 'ArrowDown') {
       downPressed = true;
+    }
+    if (event.key === 'r') {
+      sortRequested = true;
     }
   }
 
@@ -316,15 +320,15 @@ async function main(canvas: HTMLCanvasElement) {
     return glIndices;
   }
 
+  let plyVertices: {[key: string]: number}[] | null;
   async function loadGaussianSplatPly() {
     // const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
-    let plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
     if (!plyVertices) {
       fail('Failed to load PLY file');
       return;
     }
     plyVertices = plyVertices.splice(100000, 10000);
-    // plyVertices = plyVertices.splice(0, 100000);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);
@@ -397,6 +401,16 @@ async function main(canvas: HTMLCanvasElement) {
     camera.getModel().toArray(cameraValues);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
+
+    if (sortRequested) {
+      if (plyVertices) {
+        const plyIndices = new Uint32Array(createQuadIndices(plyVertices, camera.getView()).flat());
+        const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
+        indicesBuffer = plyIndicesBuffer;
+        indexCount = plyIndices.length;
+      }
+      sortRequested = false;
+    }
 
     let colorView = null;
     let colorResolveTarget = undefined; 
