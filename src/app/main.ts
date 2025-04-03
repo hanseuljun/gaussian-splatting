@@ -328,7 +328,9 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    plyVertices = plyVertices.splice(100000, 10000);
+    plyVertices = plyVertices.splice(0, 100000);
+    // plyVertices = plyVertices.splice(100000, 100);
+    // plyVertices = plyVertices.splice(100000, 10000);
 
     console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
     console.log(`plyVertices.length: ${plyVertices.length}`);

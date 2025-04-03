@@ -42,8 +42,11 @@ fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var cameraRight = vsUniforms.camera * vec4f(1.0, 0.0, 0.0, 0.0);
   var cameraUp = vsUniforms.camera * vec4f(0.0, 1.0, 0.0, 0.0);
   var cameraUv = cameraRight.xyz * v.uv.x + cameraUp.xyz * v.uv.y;
-  // TODO: apply a cov with rotation + scale, instead of only applying scale to cameraUv.
-  var offset = vec3f(v.scale.x * cameraUv.x, v.scale.y * cameraUv.y, v.scale.z * cameraUv.z);
+  var scale = mat3x3f(vec3f(v.scale.x, 0, 0), vec3f(0, v.scale.y, 0), vec3f(0, 0, v.scale.z));
+  var rotation = mat3x3f(rotate(vec3f(1, 0, 0), v.rotation), rotate(vec3f(0, 1, 0), v.rotation), rotate(vec3f(0, 0, 1), v.rotation));
+  var cov = rotation * scale;
+  var offset = cov * cameraUv;
+  // var offset = cameraUv * 0.01;
   var position = v.position + offset;
   vsOut.position = vsUniforms.projection * vsUniforms.modelView * vec4f(position, 1.0);
   vsOut.uv = v.uv;
