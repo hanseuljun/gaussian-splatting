@@ -9,7 +9,7 @@ struct VSUniforms {
 struct MyVSInput {
     @location(0) position: vec3f,
     @location(1) rotation: vec4f,
-    @location(2) scale: vec2f,
+    @location(2) scale: vec3f,
     @location(3) uv: vec2f,
     @location(4) color: vec4f,
 };
@@ -39,17 +39,13 @@ fn rotate(v: vec3f, q: vec4f) -> vec3f {
 @vertex
 fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var vsOut: MyVSOutput;
-  var offset = vec3f(v.scale.x * v.uv.x, v.scale.y * v.uv.y, 0.0);
-  // var position = v.position + rotate(vec3f(offset, 0.0), v.rotation);
+  var cameraRight = vsUniforms.camera * vec4f(1.0, 0.0, 0.0, 0.0);
+  var cameraUp = vsUniforms.camera * vec4f(0.0, 1.0, 0.0, 0.0);
+  var cameraUv = cameraRight.xyz * v.uv.x + cameraUp.xyz * v.uv.y;
+  // TODO: apply a cov with rotation + scale, instead of only applying scale to cameraUv.
+  var offset = vec3f(v.scale.x * cameraUv.x, v.scale.y * cameraUv.y, v.scale.z * cameraUv.z);
   var position = v.position + offset;
   vsOut.position = vsUniforms.projection * vsUniforms.modelView * vec4f(position, 1.0);
-  // Normal of the vertex in camera space.
-  // var normal = vsUniforms.modelView * vec4f(v.normal.xyz, 0.0);
-  // Direction from camera to the vertex in camera space.
-  // var dir = normalize(vsUniforms.modelView * vec4f(position, 1.0));
-  // var diffuse = max(0.0, dot(normal.xyz, -dir.xyz));
-  // vsOut.color = vec4f(v.color.rgb, v.color.a * diffuse);
-  // vsOut.color = vec4f(v.color.rgb, v.color.a);
   vsOut.uv = v.uv;
   vsOut.color = v.color;
   return vsOut;

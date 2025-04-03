@@ -118,7 +118,7 @@ async function main(canvas: HTMLCanvasElement) {
   const vUniformBufferSize = 3 * 16 * 4; // 3 mat4s * 16 floats per mat * 4 bytes per float
 
   const vsUniformBuffer = device.createBuffer({
-    size: Math.max(16, vUniformBufferSize),
+    size: vUniformBufferSize,
     usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
   });
 
@@ -258,6 +258,9 @@ async function main(canvas: HTMLCanvasElement) {
     view.multiply(model).toArray(modelViewValues);
     projection.toArray(projectionValues);
     camera.getModel().toArray(cameraValues);
+    // cameraValues[0] = 3.0;
+    console.log(`camera.getModel: ${camera.getModel().elements}`);
+    console.log(`vsUniformValues: ${vsUniformValues}`);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 
