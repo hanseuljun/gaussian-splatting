@@ -258,9 +258,6 @@ async function main(canvas: HTMLCanvasElement) {
     view.multiply(model).toArray(modelViewValues);
     projection.toArray(projectionValues);
     camera.getModel().toArray(cameraValues);
-    // cameraValues[0] = 3.0;
-    console.log(`camera.getModel: ${camera.getModel().elements}`);
-    console.log(`vsUniformValues: ${vsUniformValues}`);
 
     device.queue.writeBuffer(vsUniformBuffer, 0, vsUniformValues);
 
@@ -383,10 +380,17 @@ async function main(canvas: HTMLCanvasElement) {
   function createQuadIndices(plyVertices: {[key:string]: number}[]) {
     const indices = [];
     for (let i = 0; i < plyVertices.length; i++) {
-      const offset = i * 4;
-      indices.push([0, 1, 2, 0, 2, 3].map((index) => index + offset));
+      indices.push(i);
     }
-    return indices;
+    const glIndices = indices.map((index) => [
+      index * 4 + 0,
+      index * 4 + 1,
+      index * 4 + 2,
+      index * 4 + 0,
+      index * 4 + 2,
+      index * 4 + 3,
+    ]);
+    return glIndices;
   }
 
   async function loadGaussianSplatPly() {
@@ -396,7 +400,7 @@ async function main(canvas: HTMLCanvasElement) {
       fail('Failed to load PLY file');
       return;
     }
-    plyVertices = plyVertices.splice(100000, 1000);
+    plyVertices = plyVertices.splice(100000, 10000);
     // plyVertices = plyVertices.splice(0, 100000);
 
     function getSortedVertices(plyVertices: {[key:string]: number}[]) {
