@@ -220,6 +220,143 @@ async function main(canvas: HTMLCanvasElement) {
   window.addEventListener('keydown', onkeydown);
   window.addEventListener('keyup', onkeyup);
 
+  function createQuadPositions(plyVertices: {[key:string]: number}[]) {
+    const positions = [];
+    for (const v of plyVertices) {
+      positions.push([v.x, v.y, v.z]);
+      positions.push([v.x, v.y, v.z]);
+      positions.push([v.x, v.y, v.z]);
+      positions.push([v.x, v.y, v.z]);
+    }
+    return positions;
+  }
+
+  function createQuadRotations(plyVertices: {[key:string]: number}[]) {
+    const rotations = [];
+    for (const v of plyVertices) {
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
+    }
+    return rotations;
+  }
+
+  function createQuadScales(plyVertices: {[key:string]: number}[]) {
+    const offsets = [];
+    for (const v of plyVertices) {
+      const x = Math.exp(v.scale_0);
+      const y = Math.exp(v.scale_1);
+      const z = Math.exp(v.scale_2);
+      offsets.push([x, y, z]);
+      offsets.push([x, y, z]);
+      offsets.push([x, y, z]);
+      offsets.push([x, y, z]);
+    }
+    return offsets;
+  }
+
+  function createQuadUvs(plyVertices: {[key:string]: number}[]) {
+    const uvs = [];
+    for (const v of plyVertices) {
+      uvs.push([ 4.0,  4.0]);
+      uvs.push([-4.0,  4.0]);
+      uvs.push([-4.0, -4.0]);
+      uvs.push([ 4.0, -4.0]);
+    }
+    return uvs;
+  }
+
+  function createQuadColors(plyVertices: {[key:string]: number}[]) {
+    const colors = [];
+    for (const v of plyVertices) {
+      const SH_C0 = 0.28209479177387814;
+      const r = 0.5 + SH_C0 * v.f_dc_0;
+      const g = 0.5 + SH_C0 * v.f_dc_1;
+      const b = 0.5 + SH_C0 * v.f_dc_2;
+      const a = 1.0 / (1.0 + Math.exp(-v.opacity));
+      colors.push([r, g, b, a]);
+      colors.push([r, g, b, a]);
+      colors.push([r, g, b, a]);
+      colors.push([r, g, b, a]);
+    }
+    return colors;
+  }
+
+  function createQuadIndices(plyVertices: {[key:string]: number}[], viewMatrix: THREE.Matrix4) {
+    class VertexForSort {
+      plyVertex: {[key:string]: number};
+      distance: number;
+      index: number;
+
+      constructor(plyVertex: {[key:string]: number}, distance: number, index: number) {
+        this.plyVertex = plyVertex;
+        this.distance = distance;
+        this.index = index;
+      }
+    }
+
+    const verticesForSort: VertexForSort[] = [];
+    for (let i = 0; i < plyVertices.length; i++) {
+      const v = plyVertices[i];
+      const position = new THREE.Vector3(v.x, v.y, v.z).applyMatrix4(viewMatrix);
+      const vertexForSort = new VertexForSort(v, position.z, i);
+      verticesForSort.push(vertexForSort);
+    }
+
+    verticesForSort.sort((a, b) => a.distance - b.distance);
+    const glIndices = verticesForSort.map(vertex => vertex.index).map((index) => [
+      index * 4 + 0,
+      index * 4 + 1,
+      index * 4 + 2,
+      index * 4 + 0,
+      index * 4 + 2,
+      index * 4 + 3,
+    ]);
+    return glIndices;
+  }
+
+  async function loadGaussianSplatPly() {
+    // const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    let plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    if (!plyVertices) {
+      fail('Failed to load PLY file');
+      return;
+    }
+    plyVertices = plyVertices.splice(100000, 10000);
+    // plyVertices = plyVertices.splice(0, 100000);
+
+    console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
+    console.log(`plyVertices.length: ${plyVertices.length}`);
+
+    const quadColors = createQuadColors(plyVertices);
+    console.log(`quadColors: ${quadColors.slice(0, 10)}`);
+
+    const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
+    const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
+    const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
+    const plyUvs = new Float32Array(createQuadUvs(plyVertices).flat());
+    const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
+    const plyIndices = new Uint32Array(createQuadIndices(plyVertices, new THREE.Matrix4().identity()).flat());
+
+    // console.log(`plyPositions: ${plyPositions}`);
+    const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
+    const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
+    const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
+    const plyUvBuffer = createFloat32Buffer(device, plyUvs, GPUBufferUsage.VERTEX);
+    const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
+    const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
+    positionBuffer = plyPositionBuffer;
+    rotationBuffer = plyRotationBuffer;
+    scaleBuffer = plyScaleBuffer;
+    uvBuffer = plyUvBuffer;
+    colorBuffer = plyColorBuffer;
+    indicesBuffer = plyIndicesBuffer;
+    indexCount = plyIndices.length;
+  }
+
+  loadGaussianSplatPly();
+
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   function render(time: number) {
     if (!context) {
@@ -313,142 +450,6 @@ async function main(canvas: HTMLCanvasElement) {
     requestAnimationFrame(render);
   }
   requestAnimationFrame(render);
-
-  function createQuadPositions(plyVertices: {[key:string]: number}[]) {
-    const positions = [];
-    for (const v of plyVertices) {
-      positions.push([v.x, v.y, v.z]);
-      positions.push([v.x, v.y, v.z]);
-      positions.push([v.x, v.y, v.z]);
-      positions.push([v.x, v.y, v.z]);
-    }
-    return positions;
-  }
-
-  function createQuadRotations(plyVertices: {[key:string]: number}[]) {
-    const rotations = [];
-    for (const v of plyVertices) {
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-    }
-    return rotations;
-  }
-
-  function createQuadScales(plyVertices: {[key:string]: number}[]) {
-    const offsets = [];
-    for (const v of plyVertices) {
-      const x = Math.exp(v.scale_0);
-      const y = Math.exp(v.scale_1);
-      const z = Math.exp(v.scale_2);
-      offsets.push([x, y, z]);
-      offsets.push([x, y, z]);
-      offsets.push([x, y, z]);
-      offsets.push([x, y, z]);
-    }
-    return offsets;
-  }
-
-  function createQuadUvs(plyVertices: {[key:string]: number}[]) {
-    const uvs = [];
-    for (const v of plyVertices) {
-      uvs.push([ 4.0,  4.0]);
-      uvs.push([-4.0,  4.0]);
-      uvs.push([-4.0, -4.0]);
-      uvs.push([ 4.0, -4.0]);
-    }
-    return uvs;
-  }
-
-  function createQuadColors(plyVertices: {[key:string]: number}[]) {
-    const colors = [];
-    for (const v of plyVertices) {
-      const SH_C0 = 0.28209479177387814;
-      const r = 0.5 + SH_C0 * v.f_dc_0;
-      const g = 0.5 + SH_C0 * v.f_dc_1;
-      const b = 0.5 + SH_C0 * v.f_dc_2;
-      const a = 1.0 / (1.0 + Math.exp(-v.opacity));
-      colors.push([r, g, b, a]);
-      colors.push([r, g, b, a]);
-      colors.push([r, g, b, a]);
-      colors.push([r, g, b, a]);
-    }
-    return colors;
-  }
-
-  function createQuadIndices(plyVertices: {[key:string]: number}[]) {
-    class VertexForSort {
-      plyVertex: {[key:string]: number};
-      position: THREE.Vector3;
-      index: number;
-
-      constructor(plyVertex: {[key:string]: number}, position: THREE.Vector3, index: number) {
-        this.plyVertex = plyVertex;
-        this.position = position;
-        this.index = index;
-      }
-    }
-
-    const verticesForSort: VertexForSort[] = [];
-    for (let i = 0; i < plyVertices.length; i++) {
-      const v = plyVertices[i];
-      const vertexForSort = new VertexForSort(v, new THREE.Vector3(v.x, v.y, v.z), i);
-      verticesForSort.push(vertexForSort);
-    }
-
-    verticesForSort.sort((a, b) => a.position.z - b.position.z);
-    const glIndices = verticesForSort.map(vertex => vertex.index).map((index) => [
-      index * 4 + 0,
-      index * 4 + 1,
-      index * 4 + 2,
-      index * 4 + 0,
-      index * 4 + 2,
-      index * 4 + 3,
-    ]);
-    return glIndices;
-  }
-
-  async function loadGaussianSplatPly() {
-    // const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
-    let plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
-    if (!plyVertices) {
-      fail('Failed to load PLY file');
-      return;
-    }
-    plyVertices = plyVertices.splice(100000, 10000);
-    // plyVertices = plyVertices.splice(0, 100000);
-
-    console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
-    console.log(`plyVertices.length: ${plyVertices.length}`);
-
-    const quadColors = createQuadColors(plyVertices);
-    console.log(`quadColors: ${quadColors.slice(0, 10)}`);
-
-    const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
-    const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
-    const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
-    const plyUvs = new Float32Array(createQuadUvs(plyVertices).flat());
-    const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
-    const plyIndices = new Uint32Array(createQuadIndices(plyVertices).flat());
-
-    // console.log(`plyPositions: ${plyPositions}`);
-    const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
-    const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
-    const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
-    const plyUvBuffer = createFloat32Buffer(device, plyUvs, GPUBufferUsage.VERTEX);
-    const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
-    const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
-    positionBuffer = plyPositionBuffer;
-    rotationBuffer = plyRotationBuffer;
-    scaleBuffer = plyScaleBuffer;
-    uvBuffer = plyUvBuffer;
-    colorBuffer = plyColorBuffer;
-    indicesBuffer = plyIndicesBuffer;
-    indexCount = plyIndices.length;
-  }
-
-  loadGaussianSplatPly();
 }
 
 function fail(msg: string) {
