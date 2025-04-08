@@ -36,60 +36,46 @@ async function main(canvas: HTMLCanvasElement) {
     vertex: {
       module: shaderModule,
       buffers: [
-        // position
+        // positions
         {
           arrayStride: 3 * 4, // 3 floats, 4 bytes each
           attributes: [
             {shaderLocation: 0, offset: 0, format: 'float32x3'},
           ],
         },
-        // rotations
-        {
-          arrayStride: 4 * 4, // 4 floats, 4 bytes each
-          attributes: [
-            {shaderLocation: 1, offset: 0, format: 'float32x4'},
-          ],
-        },
-        // scales
-        {
-          arrayStride: 3 * 4, // 3 floats, 4 bytes each
-          attributes: [
-            {shaderLocation: 2, offset: 0, format: 'float32x3'},
-          ],
-        },
         // cov0s
         {
           arrayStride: 3 * 4, // 3 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 3, offset: 0, format: 'float32x3'},
+            {shaderLocation: 1, offset: 0, format: 'float32x3'},
           ],
         },
         // cov1s
         {
           arrayStride: 3 * 4, // 3 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 4, offset: 0, format: 'float32x3'},
+            {shaderLocation: 2, offset: 0, format: 'float32x3'},
           ],
         },
         // cov2s
         {
           arrayStride: 3 * 4, // 3 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 5, offset: 0, format: 'float32x3'},
+            {shaderLocation: 3, offset: 0, format: 'float32x3'},
           ],
         },
         // uvs
         {
           arrayStride: 2 * 4, // 2 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 6, offset: 0, format: 'float32x2'},
+            {shaderLocation: 4, offset: 0, format: 'float32x2'},
           ],
         },
         // colors
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 7, offset: 0, format: 'float32x4'},
+            {shaderLocation: 5, offset: 0, format: 'float32x4'},
           ],
         },
       ],
@@ -130,8 +116,6 @@ async function main(canvas: HTMLCanvasElement) {
   });
 
   let positionBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
-  let rotationBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
-  let scaleBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let cov0Buffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let cov1Buffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let cov2Buffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
@@ -261,31 +245,6 @@ async function main(canvas: HTMLCanvasElement) {
     return positions;
   }
 
-  function createQuadRotations(plyVertices: {[key:string]: number}[]) {
-    const rotations = [];
-    for (const v of plyVertices) {
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-      rotations.push([v.rot_1, v.rot_2, v.rot_3, v.rot_0]);
-    }
-    return rotations;
-  }
-
-  function createQuadScales(plyVertices: {[key:string]: number}[]) {
-    const offsets = [];
-    for (const v of plyVertices) {
-      const x = Math.exp(v.scale_0);
-      const y = Math.exp(v.scale_1);
-      const z = Math.exp(v.scale_2);
-      offsets.push([x, y, z]);
-      offsets.push([x, y, z]);
-      offsets.push([x, y, z]);
-      offsets.push([x, y, z]);
-    }
-    return offsets;
-  }
-
   function createQuadCovs(plyVertices: {[key:string]: number}[], column: number) {
     const offsets = [];
     for (const v of plyVertices) {
@@ -375,8 +334,6 @@ async function main(canvas: HTMLCanvasElement) {
     }
 
     const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
-    const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
-    const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
     const plyCov0s = new Float32Array(createQuadCovs(plyVertices, 0).flat());
     const plyCov1s = new Float32Array(createQuadCovs(plyVertices, 1).flat());
     const plyCov2s = new Float32Array(createQuadCovs(plyVertices, 2).flat());
@@ -385,8 +342,6 @@ async function main(canvas: HTMLCanvasElement) {
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices, new THREE.Matrix4().identity()).flat());
 
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
-    const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
-    const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
     const plyCov0Buffer = createFloat32Buffer(device, plyCov0s, GPUBufferUsage.VERTEX);
     const plyCov1Buffer = createFloat32Buffer(device, plyCov1s, GPUBufferUsage.VERTEX);
     const plyCov2Buffer = createFloat32Buffer(device, plyCov2s, GPUBufferUsage.VERTEX);
@@ -394,8 +349,6 @@ async function main(canvas: HTMLCanvasElement) {
     const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
     positionBuffer = plyPositionBuffer;
-    rotationBuffer = plyRotationBuffer;
-    scaleBuffer = plyScaleBuffer;
     cov0Buffer = plyCov0Buffer;
     cov1Buffer = plyCov1Buffer;
     cov2Buffer = plyCov2Buffer;
@@ -498,13 +451,11 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setPipeline(pipeline);
     passEncoder.setBindGroup(0, bindGroup);
     passEncoder.setVertexBuffer(0, positionBuffer);
-    passEncoder.setVertexBuffer(1, rotationBuffer);
-    passEncoder.setVertexBuffer(2, scaleBuffer);
-    passEncoder.setVertexBuffer(3, cov0Buffer);
-    passEncoder.setVertexBuffer(4, cov1Buffer);
-    passEncoder.setVertexBuffer(5, cov2Buffer);
-    passEncoder.setVertexBuffer(6, uvBuffer);
-    passEncoder.setVertexBuffer(7, colorBuffer);
+    passEncoder.setVertexBuffer(1, cov0Buffer);
+    passEncoder.setVertexBuffer(2, cov1Buffer);
+    passEncoder.setVertexBuffer(3, cov2Buffer);
+    passEncoder.setVertexBuffer(4, uvBuffer);
+    passEncoder.setVertexBuffer(5, colorBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indexCount);
     passEncoder.end();

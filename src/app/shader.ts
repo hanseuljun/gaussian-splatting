@@ -8,13 +8,11 @@ struct VSUniforms {
 
 struct MyVSInput {
     @location(0) position: vec3f,
-    @location(1) rotation: vec4f,
-    @location(2) scale: vec3f,
-    @location(3) cov0: vec3f,
-    @location(4) cov1: vec3f,
-    @location(5) cov2: vec3f,
-    @location(6) uv: vec2f,
-    @location(7) color: vec4f,
+    @location(1) cov0: vec3f,
+    @location(2) cov1: vec3f,
+    @location(3) cov2: vec3f,
+    @location(4) uv: vec2f,
+    @location(5) color: vec4f,
 };
 
 struct MyVSOutput {
@@ -45,9 +43,6 @@ fn myVSMain(v: MyVSInput) -> MyVSOutput {
   var cameraRight = vsUniforms.camera * vec4f(1.0, 0.0, 0.0, 0.0);
   var cameraUp = vsUniforms.camera * vec4f(0.0, 1.0, 0.0, 0.0);
   var cameraUv = cameraRight.xyz * v.uv.x + cameraUp.xyz * v.uv.y;
-  // var scale = mat3x3f(vec3f(v.scale.x, 0, 0), vec3f(0, v.scale.y, 0), vec3f(0, 0, v.scale.z));
-  // var rotation = mat3x3f(rotate(vec3f(1, 0, 0), v.rotation), rotate(vec3f(0, 1, 0), v.rotation), rotate(vec3f(0, 0, 1), v.rotation));
-  // var cov = rotation * scale;
   var cov = mat3x3f(v.cov0, v.cov1, v.cov2);
   var offset = cov * cameraUv;
   var position = v.position + offset;
