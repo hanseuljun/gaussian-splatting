@@ -52,23 +52,44 @@ async function main(canvas: HTMLCanvasElement) {
         },
         // scales
         {
-          arrayStride: 4 * 3, // 3 floats, 4 bytes each
+          arrayStride: 3 * 4, // 3 floats, 4 bytes each
           attributes: [
             {shaderLocation: 2, offset: 0, format: 'float32x3'},
           ],
         },
+        // cov0s
+        {
+          arrayStride: 3 * 4, // 3 floats, 4 bytes each
+          attributes: [
+            {shaderLocation: 3, offset: 0, format: 'float32x3'},
+          ],
+        },
+        // cov1s
+        {
+          arrayStride: 3 * 4, // 3 floats, 4 bytes each
+          attributes: [
+            {shaderLocation: 4, offset: 0, format: 'float32x3'},
+          ],
+        },
+        // cov2s
+        {
+          arrayStride: 3 * 4, // 3 floats, 4 bytes each
+          attributes: [
+            {shaderLocation: 5, offset: 0, format: 'float32x3'},
+          ],
+        },
         // uvs
         {
-          arrayStride: 4 * 2, // 2 floats, 4 bytes each
+          arrayStride: 2 * 4, // 2 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 3, offset: 0, format: 'float32x2'},
+            {shaderLocation: 6, offset: 0, format: 'float32x2'},
           ],
         },
         // colors
         {
           arrayStride: 4 * 4, // 4 floats, 4 bytes each
           attributes: [
-            {shaderLocation: 4, offset: 0, format: 'float32x4'},
+            {shaderLocation: 7, offset: 0, format: 'float32x4'},
           ],
         },
       ],
@@ -111,6 +132,9 @@ async function main(canvas: HTMLCanvasElement) {
   let positionBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let rotationBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let scaleBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
+  let cov0Buffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
+  let cov1Buffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
+  let cov2Buffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let uvBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let colorBuffer = createFloat32Buffer(device, new Float32Array([]), GPUBufferUsage.VERTEX);
   let indicesBuffer = createUint32Buffer(device, new Uint32Array([]), GPUBufferUsage.INDEX);
@@ -135,8 +159,9 @@ async function main(canvas: HTMLCanvasElement) {
     ],
   });
 
-  // const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
-  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 10);
+  const camera = new Camera(30, canvas.clientWidth / canvas.clientHeight, 0.1, 100);
+  camera.position = new THREE.Vector3(0, 0, 6);
+  camera.rotation.setFromAxisAngle(new THREE.Vector3(0, 0, 1), Math.PI);
 
   let wPressed = false;
   let sPressed = false;
@@ -261,6 +286,24 @@ async function main(canvas: HTMLCanvasElement) {
     return offsets;
   }
 
+  function createQuadCovs(plyVertices: {[key:string]: number}[], column: number) {
+    const offsets = [];
+    for (const v of plyVertices) {
+      const x = Math.exp(v.scale_0);
+      const y = Math.exp(v.scale_1);
+      const z = Math.exp(v.scale_2);
+      const rotation = new THREE.Quaternion(v.rot_1, v.rot_2, v.rot_3, v.rot_0);
+      const scale = new THREE.Vector3(x, y, z);
+      const cov = new THREE.Matrix4().compose(new THREE.Vector3(), rotation, scale);
+      const covArray = cov.toArray().slice(column * 4, column * 4 + 3);
+      offsets.push(covArray);
+      offsets.push(covArray);
+      offsets.push(covArray);
+      offsets.push(covArray);
+    }
+    return offsets;
+  }
+
   function createQuadUvs(plyVertices: {[key:string]: number}[]) {
     const uvs = [];
     for (const v of plyVertices) {
@@ -323,39 +366,39 @@ async function main(canvas: HTMLCanvasElement) {
 
   let plyVertices: {[key: string]: number}[] | null;
   async function loadGaussianSplatPly() {
-    // const plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
-    plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    // plyVertices = await readPlyFile('./gs_FF3_lumix_4k 3.ply');
+    plyVertices = await readPlyFile('./gd2.ply');
+    // plyVertices = await readPlyFile('./goldorak-ply.ply');
     if (!plyVertices) {
       fail('Failed to load PLY file');
       return;
     }
-    // plyVertices = plyVertices.splice(0, 100000);
-    // plyVertices = plyVertices.splice(100000, 100);
-    // plyVertices = plyVertices.splice(100000, 10000);
-
-    console.log(`plyVertices[0]: ${JSON.stringify(plyVertices[0])}`);
-    console.log(`plyVertices.length: ${plyVertices.length}`);
-
-    const quadColors = createQuadColors(plyVertices);
-    console.log(`quadColors: ${quadColors.slice(0, 10)}`);
 
     const plyPositions = new Float32Array(createQuadPositions(plyVertices).flat());
     const plyRotations = new Float32Array(createQuadRotations(plyVertices).flat());
     const plyScales = new Float32Array(createQuadScales(plyVertices).flat());
+    const plyCov0s = new Float32Array(createQuadCovs(plyVertices, 0).flat());
+    const plyCov1s = new Float32Array(createQuadCovs(plyVertices, 1).flat());
+    const plyCov2s = new Float32Array(createQuadCovs(plyVertices, 2).flat());
     const plyUvs = new Float32Array(createQuadUvs(plyVertices).flat());
     const plyColors = new Float32Array(createQuadColors(plyVertices).flat());
     const plyIndices = new Uint32Array(createQuadIndices(plyVertices, new THREE.Matrix4().identity()).flat());
 
-    // console.log(`plyPositions: ${plyPositions}`);
     const plyPositionBuffer = createFloat32Buffer(device, plyPositions, GPUBufferUsage.VERTEX);
     const plyRotationBuffer = createFloat32Buffer(device, plyRotations, GPUBufferUsage.VERTEX);
     const plyScaleBuffer = createFloat32Buffer(device, plyScales, GPUBufferUsage.VERTEX);
+    const plyCov0Buffer = createFloat32Buffer(device, plyCov0s, GPUBufferUsage.VERTEX);
+    const plyCov1Buffer = createFloat32Buffer(device, plyCov1s, GPUBufferUsage.VERTEX);
+    const plyCov2Buffer = createFloat32Buffer(device, plyCov2s, GPUBufferUsage.VERTEX);
     const plyUvBuffer = createFloat32Buffer(device, plyUvs, GPUBufferUsage.VERTEX);
     const plyColorBuffer = createFloat32Buffer(device, plyColors, GPUBufferUsage.VERTEX);
     const plyIndicesBuffer = createUint32Buffer(device, plyIndices, GPUBufferUsage.INDEX);
     positionBuffer = plyPositionBuffer;
     rotationBuffer = plyRotationBuffer;
     scaleBuffer = plyScaleBuffer;
+    cov0Buffer = plyCov0Buffer;
+    cov1Buffer = plyCov1Buffer;
+    cov2Buffer = plyCov2Buffer;
     uvBuffer = plyUvBuffer;
     colorBuffer = plyColorBuffer;
     indicesBuffer = plyIndicesBuffer;
@@ -370,7 +413,7 @@ async function main(canvas: HTMLCanvasElement) {
       fail('need a browser that supports WebGPU');
       return;
     }
-    // time *= 0.001;
+
     resizeToDisplaySize(device, canvasInfo);
 
     let dx = 0;
@@ -457,8 +500,11 @@ async function main(canvas: HTMLCanvasElement) {
     passEncoder.setVertexBuffer(0, positionBuffer);
     passEncoder.setVertexBuffer(1, rotationBuffer);
     passEncoder.setVertexBuffer(2, scaleBuffer);
-    passEncoder.setVertexBuffer(3, uvBuffer);
-    passEncoder.setVertexBuffer(4, colorBuffer);
+    passEncoder.setVertexBuffer(3, cov0Buffer);
+    passEncoder.setVertexBuffer(4, cov1Buffer);
+    passEncoder.setVertexBuffer(5, cov2Buffer);
+    passEncoder.setVertexBuffer(6, uvBuffer);
+    passEncoder.setVertexBuffer(7, colorBuffer);
     passEncoder.setIndexBuffer(indicesBuffer, 'uint32');
     passEncoder.drawIndexed(indexCount);
     passEncoder.end();

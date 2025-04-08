@@ -14,7 +14,7 @@ class Camera {
     this.aspectRatio = aspectRatio;
     this.near = near;
     this.far = far;
-    this.position = new THREE.Vector3(0, 0, 6);
+    this.position = new THREE.Vector3(0, 0, 0);
     this.rotation = new THREE.Quaternion(0, 0, 0, 1);
   }
 
